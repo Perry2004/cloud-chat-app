@@ -82,8 +82,9 @@ jobs:
           echo "Using turbo filter: ${TURBO_FILTER}"
 
           # Get affected package names from turbo
+          # Note: grep returns exit code 1 when no matches found, use || true to prevent script failure
           AFFECTED_PKG_NAMES=$(pnpm turbo run build --filter="${TURBO_FILTER}" --dry=json 2>/dev/null | \
-            jq -r '.packages[]' | grep -v '^//$')
+            jq -r '.packages[]' | grep -v '^//$' || true)
 
           # Map package names to their actual paths
           AFFECTED_PACKAGES=$(echo "$AFFECTED_PKG_NAMES" | \
