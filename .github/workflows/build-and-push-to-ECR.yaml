@@ -47,6 +47,17 @@ jobs:
       - name: Determine affected services
         id: affected
         run: |
+          # Helper function to map package names to their paths
+          map_package_to_path() {
+            local pkg_name=$1
+            # Find the actual path for this package name in apps directory
+            local pkg_path=$(find apps -type f -name "package.json" -not -path "*/node_modules/*" \
+              -exec grep -l "\"name\": \"$pkg_name\"" {} \; | head -1 | xargs dirname 2>/dev/null)
+            if [ -n "$pkg_path" ]; then
+              echo "$pkg_path"
+            fi
+          }
+
           # Get affected packages using turbo
           # Compare with the previous commit or main branch
           if [ "${{ github.event_name }}" = "push" ]; then
@@ -55,23 +66,35 @@ jobs:
             BASE_REF="origin/main"
           fi
 
-          # Run turbo to get affected packages
+          # Run turbo to get affected packages based on changes
+          # This considers the dependency graph, so changes to shared packages will affect dependents
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            # For manual triggers, get all packages in apps
-            AFFECTED_PACKAGES=$(find apps -type f -name "package.json" | xargs dirname | jq -R -s -c 'split("\n")[:-1]')
+            # For manual triggers, build all apps packages (useful for manual deployments)
+            TURBO_FILTER="./apps/**"
+            echo "Manual trigger: building all packages in apps"
           else
-            # Get affected packages from turbo
-            AFFECTED_PACKAGES=$(pnpm turbo run build --filter="...[${BASE_REF}]" --dry=json 2>/dev/null | \
-              jq -r '.packages[]' | \
-              while read -r pkg_name; do
-                # Find the actual path for this package name
-                pkg_path=$(find apps -type f -name "package.json" -exec grep -l "\"name\": \"$pkg_name\"" {} \; | head -1 | xargs dirname)
-                if [ -n "$pkg_path" ]; then
-                  echo "$pkg_path"
-                fi
-              done | \
-              jq -R -s -c 'split("\n")[:-1]')
+            # For push events, get packages affected by changes since base ref
+            # Syntax: {scope}[gitRange] where scope matches packages and gitRange specifies the comparison
+            TURBO_FILTER="{./apps/**}[${BASE_REF}]"
+            echo "Automatic trigger: building packages affected since ${BASE_REF}"
           fi
+
+          echo "Using turbo filter: ${TURBO_FILTER}"
+
+          # Get affected package names from turbo
+          AFFECTED_PKG_NAMES=$(pnpm turbo run build --filter="${TURBO_FILTER}" --dry=json 2>/dev/null | \
+            jq -r '.packages[]' | grep -v '^//$')
+
+          # Map package names to their actual paths
+          AFFECTED_PACKAGES=$(echo "$AFFECTED_PKG_NAMES" | \
+            while read -r pkg_name; do
+              [ -z "$pkg_name" ] && continue
+              pkg_path=$(map_package_to_path "$pkg_name")
+              if [ -n "$pkg_path" ]; then
+                echo "$pkg_path"
+              fi
+            done | \
+            jq -R -s -c 'split("\n")[:-1]')
 
           echo "affected_packages=${AFFECTED_PACKAGES}" >> $GITHUB_OUTPUT
           echo "Affected packages: ${AFFECTED_PACKAGES}"
