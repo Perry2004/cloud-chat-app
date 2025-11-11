@@ -87,7 +87,6 @@ jobs:
 
           # Check if there are any affected packages
           if [ "$AFFECTED_PACKAGES" = "[]" ] || [ -z "$AFFECTED_PACKAGES" ]; then
-            echo "ℹ️ No affected packages with Dockerfiles found"
             echo "- ℹ️ No services affected by this change" >> summary.txt
             cat summary.txt >> $GITHUB_STEP_SUMMARY
             exit 0
@@ -106,6 +105,15 @@ jobs:
             # e.g., apps/api/account-service -> cca/api/account-service
             # e.g., apps/ui -> cca/ui
             IMAGE_NAME="cca/${package#apps/}"
+
+            # Check if Dockerfile exists
+            if [ ! -f "$DOCKERFILE_PATH" ]; then
+              echo "❌ Dockerfile not found at $DOCKERFILE_PATH"
+              echo "- ❌ \`$IMAGE_NAME\` - Dockerfile missing at \`$DOCKERFILE_PATH\`" >> summary.txt
+              BUILD_FAILED=1
+              echo ""
+              continue
+            fi
 
             echo "🔨 Building $package..."
             echo "   Dockerfile: $DOCKERFILE_PATH"
