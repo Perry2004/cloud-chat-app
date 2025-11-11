@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
           cache: "pnpm"
 
       - name: Install dependencies
@@ -73,82 +73,155 @@ jobs:
           echo "affected_packages=${AFFECTED_PACKAGES}" >> $GITHUB_OUTPUT
           echo "Affected packages: ${AFFECTED_PACKAGES}"
 
-      - name: Build Docker images
+      - name: Build affected services
+        id: build
         env:
           AFFECTED_PACKAGES: ${{ steps.affected.outputs.affected_packages }}
         run: |
-          echo "## Build Check Summary" > summary.txt
+          # Check if there are any affected packages
+          if [ "$AFFECTED_PACKAGES" = "[]" ] || [ -z "$AFFECTED_PACKAGES" ]; then
+            echo "ℹ️ No services affected by this change"
+            echo "build_status=skipped" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "🔨 Building affected services..."
+          echo ""
+
+          # Build affected packages using turbo
+          BASE_REF="origin/${{ github.base_ref }}"
+          TURBO_FILTER="{./apps/**}[${BASE_REF}]"
+
+          # Capture build output and status
+          set +e
+          BUILD_OUTPUT=$(pnpm turbo run build --filter="${TURBO_FILTER}" 2>&1)
+          BUILD_EXIT_CODE=$?
+          set -e
+
+          echo "$BUILD_OUTPUT"
+          echo ""
+
+          if [ $BUILD_EXIT_CODE -eq 0 ]; then
+            echo "✅ All services built successfully"
+            echo "build_status=success" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Build failed for one or more services"
+            echo "build_status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Check Dockerfiles exist
+        if: always()
+        env:
+          AFFECTED_PACKAGES: ${{ steps.affected.outputs.affected_packages }}
+          BUILD_STATUS: ${{ steps.build.outputs.build_status }}
+        run: |
+          echo "## 📋 Build Check Summary" > summary.txt
           echo "" >> summary.txt
           echo "**PR:** #${{ github.event.pull_request.number }}" >> summary.txt
-          echo "**Branch:** ${{ github.head_ref }}" >> summary.txt
-          echo "" >> summary.txt
-          echo "### Services Built:" >> summary.txt
+          echo "**Branch:** \`${{ github.head_ref }}\`" >> summary.txt
           echo "" >> summary.txt
 
           # Check if there are any affected packages
           if [ "$AFFECTED_PACKAGES" = "[]" ] || [ -z "$AFFECTED_PACKAGES" ]; then
-            echo "- ℹ️ No services affected by this change" >> summary.txt
+            echo "### ℹ️ No Services Affected" >> summary.txt
+            echo "" >> summary.txt
+            echo "No services were affected by changes in this PR." >> summary.txt
             cat summary.txt >> $GITHUB_STEP_SUMMARY
             exit 0
           fi
 
-          BUILD_FAILED=0
+          # Count services
+          TOTAL_COUNT=$(echo "$AFFECTED_PACKAGES" | jq 'length')
+          echo "### 📦 Affected Services: $TOTAL_COUNT" >> summary.txt
+          echo "" >> summary.txt
 
-          # Parse affected packages and build Docker images
+          # Build status section
+          echo "#### 🔨 Build Status" >> summary.txt
+          echo "" >> summary.txt
+          if [ "$BUILD_STATUS" = "success" ]; then
+            echo "✅ **All services built successfully**" >> summary.txt
+          elif [ "$BUILD_STATUS" = "failed" ]; then
+            echo "❌ **Build failed** - Check logs above for details" >> summary.txt
+          else
+            echo "⏭️ **Build skipped**" >> summary.txt
+          fi
+          echo "" >> summary.txt
+
+          # Dockerfile check section
+          echo "#### 🐳 Dockerfile Check" >> summary.txt
+          echo "" >> summary.txt
+
+          DOCKERFILE_FAILED=0
+          SUCCESS_SERVICES=()
+          FAILED_SERVICES=()
+
+          # Parse affected packages and check for Dockerfiles
           while IFS= read -r package; do
             # Skip empty lines
             [ -z "$package" ] && continue
 
-            # Determine paths and image names
             DOCKERFILE_PATH="${package}/Dockerfile"
-            # Convert package path to image name
-            # e.g., apps/api/account-service -> cca/api/account-service
-            # e.g., apps/ui -> cca/ui
-            IMAGE_NAME="cca/${package#apps/}"
+            SERVICE_NAME="${package#apps/}"
 
             # Check if Dockerfile exists
             if [ ! -f "$DOCKERFILE_PATH" ]; then
-              echo "❌ Dockerfile not found at $DOCKERFILE_PATH"
-              echo "- ❌ \`$IMAGE_NAME\` - Dockerfile missing at \`$DOCKERFILE_PATH\`" >> summary.txt
-              BUILD_FAILED=1
-              echo ""
-              continue
-            fi
-
-            echo "🔨 Building $package..."
-            echo "   Dockerfile: $DOCKERFILE_PATH"
-            echo "   Image Name: $IMAGE_NAME"
-
-            # Build the image without pushing
-            set +e
-
-            docker build \
-              --file "$DOCKERFILE_PATH" \
-              --tag "$IMAGE_NAME:pr-${{ github.event.pull_request.number }}" \
-              --tag "$IMAGE_NAME:check" \
-              .
-            BUILD_EXIT_CODE=$?
-
-            set -e
-
-            if [ $BUILD_EXIT_CODE -eq 0 ]; then
-              echo "✅ Successfully built $package"
-              echo "   Image: $IMAGE_NAME:pr-${{ github.event.pull_request.number }}"
-              echo "- ✅ \`$IMAGE_NAME\` - Build successful" >> summary.txt
+              echo "❌ Missing Dockerfile: $package"
+              FAILED_SERVICES+=("$SERVICE_NAME")
+              DOCKERFILE_FAILED=1
             else
-              echo "❌ Failed to build $package"
-              echo "- ❌ \`$IMAGE_NAME\` - Build failed" >> summary.txt
-              BUILD_FAILED=1
+              echo "✅ Found Dockerfile: $package"
+              SUCCESS_SERVICES+=("$SERVICE_NAME")
             fi
-
-            echo ""
           done < <(echo "$AFFECTED_PACKAGES" | jq -r '.[]')
+
+          # Summary of Dockerfile checks
+          if [ ${#SUCCESS_SERVICES[@]} -gt 0 ]; then
+            echo "**✅ Services with Dockerfile (${#SUCCESS_SERVICES[@]}):**" >> summary.txt
+            for service in "${SUCCESS_SERVICES[@]}"; do
+              echo "- ✅ \`$service\`" >> summary.txt
+            done
+            echo "" >> summary.txt
+          fi
+
+          if [ ${#FAILED_SERVICES[@]} -gt 0 ]; then
+            echo "**❌ Services missing Dockerfile (${#FAILED_SERVICES[@]}):**" >> summary.txt
+            for service in "${FAILED_SERVICES[@]}"; do
+              echo "- ❌ \`$service\`" >> summary.txt
+            done
+            echo "" >> summary.txt
+          fi
+
+          # Overall status
+          echo "---" >> summary.txt
+          echo "" >> summary.txt
+
+          if [ "$BUILD_STATUS" = "success" ] && [ $DOCKERFILE_FAILED -eq 0 ]; then
+            echo "### ✅ All Checks Passed" >> summary.txt
+            echo "" >> summary.txt
+            echo "All affected services built successfully and have Dockerfiles ready for deployment." >> summary.txt
+          else
+            echo "### ❌ Checks Failed" >> summary.txt
+            echo "" >> summary.txt
+            if [ "$BUILD_STATUS" = "failed" ]; then
+              echo "- Build failed for one or more services" >> summary.txt
+            fi
+            if [ $DOCKERFILE_FAILED -eq 1 ]; then
+              echo "- One or more services are missing Dockerfiles" >> summary.txt
+            fi
+          fi
 
           # Add summary to GitHub Actions summary
           cat summary.txt >> $GITHUB_STEP_SUMMARY
 
-          # Exit with error if any build failed
-          if [ $BUILD_FAILED -eq 1 ]; then
-            echo "::error::One or more Docker builds failed"
+          # Exit with error if any check failed
+          if [ $DOCKERFILE_FAILED -eq 1 ]; then
+            echo ""
+            echo "::error::One or more services are missing Dockerfiles"
+            exit 1
+          fi
+
+          # Also fail if build failed
+          if [ "$BUILD_STATUS" = "failed" ]; then
             exit 1
           fi
