@@ -26,7 +26,7 @@ WORKDIR /app
 COPY --from=builder /app/apps/ui/.output ./apps/ui/.output
 COPY --from=builder /app/apps/ui/package.json ./apps/ui/package.json
 COPY --from=builder /app/package.json ./package.json
-EXPOSE 3000
+EXPOSE 1688
 ENV NODE_ENV=production
 ENV NITRO_PORT=1688
 ENV NITRO_HOST=0.0.0.0
