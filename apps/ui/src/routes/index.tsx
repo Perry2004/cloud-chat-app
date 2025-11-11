@@ -70,6 +70,7 @@ function App() {
           </div>
           <p className="text-2xl md:text-3xl text-gray-300 mb-4 font-light">
             The framework for next generation AI applications
+            By PerryZ
           </p>
           <p className="text-lg text-gray-400 max-w-3xl mx-auto mb-8">
             Full-stack framework powered by TanStack Router for React and Solid.
