@@ -1,0 +1,147 @@
+# Build and push the script image to ECR, which will be used by Lambda functions.
+name: Build services and push to ECR
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+jobs:
+  build-and-push-to-ecr:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch full history so turbo can compare with origin/main if needed
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.20.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Determine affected services
+        id: affected
+        run: |
+          # Get affected packages using turbo
+          # Compare with the previous commit or main branch
+          if [ "${{ github.event_name }}" = "push" ]; then
+            BASE_REF="HEAD^1"
+          else
+            BASE_REF="origin/main"
+          fi
+
+          # Run turbo to get affected packages
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # For manual triggers, get all packages with Dockerfiles
+            AFFECTED_PACKAGES=$(find apps -name "Dockerfile" -type f | sed 's|/Dockerfile||' | jq -R -s -c 'split("\n")[:-1]')
+          else
+            # Get affected packages from turbo and filter only those with Dockerfiles
+            AFFECTED_PACKAGES=$(pnpm turbo run build --filter="...[${BASE_REF}]" --dry=json 2>/dev/null | \
+              jq -r '.packages[]' | \
+              grep '^apps/' | \
+              while read -r pkg; do
+                [ -f "$pkg/Dockerfile" ] && echo "$pkg"
+              done | \
+              jq -R -s -c 'split("\n")[:-1]')
+          fi
+
+          echo "affected_packages=${AFFECTED_PACKAGES}" >> $GITHUB_OUTPUT
+          echo "Affected packages: ${AFFECTED_PACKAGES}"
+
+      - name: Build and push Docker images
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+          AFFECTED_PACKAGES: ${{ steps.affected.outputs.affected_packages }}
+        run: |
+          echo "## Build Summary" > summary.txt
+          echo "" >> summary.txt
+          echo "**Commit:** ${{ github.sha }}" >> summary.txt
+          echo "" >> summary.txt
+          echo "### Images Built:" >> summary.txt
+          echo "" >> summary.txt
+
+          # Check if there are any affected packages
+          if [ "$AFFECTED_PACKAGES" = "[]" ] || [ -z "$AFFECTED_PACKAGES" ]; then
+            echo "ℹ️ No affected packages with Dockerfiles found"
+            echo "- ℹ️ No services affected by this change" >> summary.txt
+            cat summary.txt >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
+          BUILD_FAILED=0
+
+          # Parse affected packages and build Docker images
+          while IFS= read -r package; do
+            # Skip empty lines
+            [ -z "$package" ] && continue
+
+            # Determine paths and repository names
+            DOCKERFILE_PATH="${package}/Dockerfile"
+            # Convert package path to ECR repository name
+            # e.g., apps/api/account-service -> cca/api/account-service
+            # e.g., apps/ui -> cca/ui
+            ECR_REPO="cca/${package#apps/}"
+
+            echo "🔨 Building $package..."
+            echo "   Dockerfile: $DOCKERFILE_PATH"
+            echo "   ECR Repository: $ECR_REPO"
+
+            # Build and push the image (disable exit on error for this command)
+            set +e
+            docker buildx build \
+              --platform linux/amd64 \
+              --file "$DOCKERFILE_PATH" \
+              --tag "$ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG" \
+              --tag "$ECR_REGISTRY/$ECR_REPO:latest" \
+              --push \
+              .
+            BUILD_EXIT_CODE=$?
+            set -e
+
+            if [ $BUILD_EXIT_CODE -eq 0 ]; then
+              echo "✅ Successfully built and pushed $package"
+              echo "   Image: $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG"
+              echo "- ✅ \`$ECR_REPO:$IMAGE_TAG\`" >> summary.txt
+            else
+              echo "❌ Failed to build $package"
+              echo "- ❌ \`$ECR_REPO\` (build failed)" >> summary.txt
+              BUILD_FAILED=1
+            fi
+
+            echo ""
+          done < <(echo "$AFFECTED_PACKAGES" | jq -r '.[]')
+
+          # Add summary to GitHub Actions summary
+          cat summary.txt >> $GITHUB_STEP_SUMMARY
+
+          # Exit with error if any build failed
+          if [ $BUILD_FAILED -eq 1 ]; then
+            echo "::error::One or more Docker builds failed"
+            exit 1
+          fi
