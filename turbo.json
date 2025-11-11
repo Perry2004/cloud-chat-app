@@ -7,8 +7,8 @@
             ],
             "outputs": [
                 "dist/**",
-                ".vite/**",
-                "build/**"
+                "build/**",
+                ".output/**"
             ]
         },
         "dev": {
