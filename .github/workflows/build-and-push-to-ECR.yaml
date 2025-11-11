@@ -41,6 +41,66 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Verify ECR Access
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          echo "🔍 Testing ECR access and permissions..."
+          echo "Registry: $ECR_REGISTRY"
+          echo ""
+
+          # Check AWS identity
+          echo "📋 AWS Identity:"
+          aws sts get-caller-identity || echo "❌ Cannot get caller identity"
+          echo ""
+
+          # Test repository access
+          echo "📦 Testing Repository Access:"
+          REPOS=("cca/ui" "cca/api/account-service")
+
+          for repo in "${REPOS[@]}"; do
+            echo "  Testing: $repo"
+
+            # Check describe permission
+            if aws ecr describe-repositories --repository-names "$repo" >/dev/null 2>&1; then
+              echo "    ✅ Can describe repository"
+            else
+              echo "    ❌ Cannot describe repository"
+            fi
+
+            # Check list images permission
+            if aws ecr list-images --repository-name "$repo" --max-items 1 >/dev/null 2>&1; then
+              echo "    ✅ Can list images"
+            else
+              echo "    ❌ Cannot list images (may cause build cache issues)"
+            fi
+
+            # Check batch get image permission (needed for layer checks)
+            IMAGE_IDS=$(aws ecr list-images --repository-name "$repo" --max-items 1 --query 'imageIds[0]' 2>/dev/null)
+            if [ "$IMAGE_IDS" != "null" ] && [ -n "$IMAGE_IDS" ]; then
+              if aws ecr batch-get-image --repository-name "$repo" --image-ids "$IMAGE_IDS" >/dev/null 2>&1; then
+                echo "    ✅ Can get image manifests"
+              else
+                echo "    ⚠️  Cannot get image manifests (may affect layer caching)"
+              fi
+            fi
+
+            # Test put image permission (simulate permission check)
+            echo "    ℹ️  Push permission will be tested during build"
+            echo ""
+          done
+
+          # Check authorization token
+          echo "🔐 Docker Login Status:"
+          if docker info | grep -q "$ECR_REGISTRY"; then
+            echo "  ✅ Docker is authenticated with ECR"
+          else
+            echo "  ⚠️  Docker authentication status unclear"
+          fi
+
+          echo ""
+          echo "✅ ECR access verification complete"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
