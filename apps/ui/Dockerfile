@@ -1,36 +1,33 @@
-# Build stage
-FROM node:22-alpine AS builder
+FROM node:22 AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+RUN pnpm add -g turbo
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@10.20.0 --activate
-
+FROM base AS pruner
 WORKDIR /app
+COPY . .
+RUN turbo prune ui --docker
+ENTRYPOINT [ "/bin/bash" ]
 
-# Copy workspace files
-COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
-COPY turbo.json ./
-
-# Copy the service package.json
-COPY apps/ui/package.json ./apps/ui/
-
-# Install dependencies
+FROM base AS installer
+WORKDIR /app
+COPY --from=pruner /app/out/json/ .
 RUN pnpm install --frozen-lockfile
 
-# Copy source code
-COPY apps/ui ./apps/ui
+FROM base AS builder
+WORKDIR /app
+COPY --from=installer /app/ .
+COPY --from=pruner /app/out/full/ .
+RUN turbo build --filter=ui
 
-# Build the application
-RUN pnpm --filter ui build
-
-# Production stage
-FROM nginx:alpine
-
-# Copy built application
-COPY --from=builder /app/apps/ui/dist /usr/share/nginx/html
-
-# Copy nginx configuration if needed
-# COPY apps/ui/nginx.conf /etc/nginx/nginx.conf
-
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+FROM base AS runner
+WORKDIR /app
+COPY --from=builder /app/apps/ui/.output ./apps/ui/.output
+COPY --from=builder /app/apps/ui/package.json ./apps/ui/package.json
+COPY --from=builder /app/package.json ./package.json
+EXPOSE 1688
+ENV NODE_ENV=production
+ENV NITRO_PORT=1688
+ENV NITRO_HOST=0.0.0.0
+CMD ["pnpm", "--filter", "ui", "start"]

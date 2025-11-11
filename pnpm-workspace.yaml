@@ -1,4 +1,11 @@
 packages:
-  - "apps/*"
-  - "apps/api/*"
-  - "packages/*"
+  - apps/*
+  - apps/api/*
+  - packages/*
+
+onlyBuiltDependencies:
+  - '@heroui/shared-utils'
+  - '@nestjs/core'
+  - '@swc/core'
+  - esbuild
+  - unrs-resolver

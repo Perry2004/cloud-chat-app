@@ -1,71 +1,80 @@
+import { StrictMode, type ReactNode } from "react";
+import appCss from "../styles/index.css?url";
 import {
+  Outlet,
+  createRootRoute,
   HeadContent,
   Scripts,
-  createRootRouteWithContext,
-} from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { TanStackDevtools } from '@tanstack/react-devtools'
+  useRouter,
+} from "@tanstack/react-router";
+import { HeroUIProvider } from "@heroui/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
-import Header from '../components/Header'
+const queryClient = new QueryClient();
 
-import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
-
-import appCss from '../styles.css?url'
-
-import type { QueryClient } from '@tanstack/react-query'
-
-interface MyRouterContext {
-  queryClient: QueryClient
-}
-
-export const Route = createRootRouteWithContext<MyRouterContext>()({
+export const Route = createRootRoute({
   head: () => ({
     meta: [
       {
-        charSet: 'utf-8',
+        charSet: "utf-8",
       },
       {
-        name: 'viewport',
-        content: 'width=device-width, initial-scale=1',
+        name: "viewport",
+        content: "width=device-width, initial-scale=1",
       },
       {
-        title: 'TanStack Start Starter',
+        title: "Simple Chat App",
       },
     ],
     links: [
       {
-        rel: 'stylesheet',
+        rel: "icon",
+        href: "/favicon.ico",
+      },
+      {
+        rel: "stylesheet",
         href: appCss,
       },
     ],
   }),
+  component: RootComponent,
+  context: () => ({
+    queryClient,
+  }),
+});
 
-  shellComponent: RootDocument,
-})
+function RootComponent() {
+  const router = useRouter();
 
-function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <RootDocument>
+      <HeroUIProvider
+        navigate={(to, options) => router.navigate({ to, ...(options || {}) })}
+        useHref={(to) => router.buildLocation({ to }).href}
+      >
+        <QueryClientProvider client={queryClient}>
+          <StrictMode>
+            <Outlet />
+          </StrictMode>
+          <TanStackRouterDevtools />
+          <ReactQueryDevtools />
+        </QueryClientProvider>
+      </HeroUIProvider>
+    </RootDocument>
+  );
+}
+function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
+  return (
+    <html>
       <head>
         <HeadContent />
       </head>
       <body>
-        <Header />
         {children}
-        <TanStackDevtools
-          config={{
-            position: 'bottom-right',
-          }}
-          plugins={[
-            {
-              name: 'Tanstack Router',
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-            TanStackQueryDevtools,
-          ]}
-        />
         <Scripts />
       </body>
     </html>
-  )
+  );
 }

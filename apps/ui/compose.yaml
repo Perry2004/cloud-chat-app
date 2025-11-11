@@ -1,0 +1,7 @@
+services:
+  cca-ui:
+    build:
+      context: ../../
+      dockerfile: apps/ui/Dockerfile
+    ports:
+      - "1688:1688"
