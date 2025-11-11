@@ -57,15 +57,18 @@ jobs:
 
           # Run turbo to get affected packages
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            # For manual triggers, get all packages with Dockerfiles
-            AFFECTED_PACKAGES=$(find apps -name "Dockerfile" -type f | sed 's|/Dockerfile||' | jq -R -s -c 'split("\n")[:-1]')
+            # For manual triggers, get all packages in apps
+            AFFECTED_PACKAGES=$(find apps -type f -name "package.json" | xargs dirname | jq -R -s -c 'split("\n")[:-1]')
           else
-            # Get affected packages from turbo and filter only those with Dockerfiles
+            # Get affected packages from turbo
             AFFECTED_PACKAGES=$(pnpm turbo run build --filter="...[${BASE_REF}]" --dry=json 2>/dev/null | \
               jq -r '.packages[]' | \
-              grep '^apps/' | \
-              while read -r pkg; do
-                [ -f "$pkg/Dockerfile" ] && echo "$pkg"
+              while read -r pkg_name; do
+                # Find the actual path for this package name
+                pkg_path=$(find apps -type f -name "package.json" -exec grep -l "\"name\": \"$pkg_name\"" {} \; | head -1 | xargs dirname)
+                if [ -n "$pkg_path" ]; then
+                  echo "$pkg_path"
+                fi
               done | \
               jq -R -s -c 'split("\n")[:-1]')
           fi
