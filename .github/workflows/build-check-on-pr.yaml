@@ -1,21 +1,20 @@
-# Build and push the script image to ECR, which will be used by Lambda functions.
-name: Build services and push to ECR
+# Build check for affected services on pull requests
+name: Build Check on PR
 on:
-  push:
+  pull_request:
     branches:
       - main
-  workflow_dispatch:
 jobs:
-  build-and-push-to-ecr:
+  build-check:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
       contents: read
+      pull-requests: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetch full history so turbo can compare with origin/main if needed
+          fetch-depth: 0 # Fetch full history so turbo can compare with base branch
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -30,16 +29,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_IAM_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
-
-      - name: Log in to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Determine affected services
         id: affected
@@ -56,26 +45,13 @@ jobs:
           }
 
           # Get affected packages using turbo
-          # Compare with the previous commit or main branch
-          if [ "${{ github.event_name }}" = "push" ]; then
-            BASE_REF="HEAD^1"
-          else
-            BASE_REF="origin/main"
-          fi
+          # Compare with the base branch (target of PR)
+          BASE_REF="origin/${{ github.base_ref }}"
 
           # Run turbo to get affected packages based on changes
           # This considers the dependency graph, so changes to shared packages will affect dependents
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            # For manual triggers, build all apps packages (useful for manual deployments)
-            TURBO_FILTER="./apps/**"
-            echo "Manual trigger: building all packages in apps"
-          else
-            # For push events, get packages affected by changes since base ref
-            # Syntax: {scope}[gitRange] where scope matches packages and gitRange specifies the comparison
-            TURBO_FILTER="{./apps/**}[${BASE_REF}]"
-            echo "Automatic trigger: building packages affected since ${BASE_REF}"
-          fi
-
+          TURBO_FILTER="{./apps/**}[${BASE_REF}]"
+          echo "Building packages affected since ${BASE_REF}"
           echo "Using turbo filter: ${TURBO_FILTER}"
 
           # Get affected package names from turbo
@@ -97,17 +73,16 @@ jobs:
           echo "affected_packages=${AFFECTED_PACKAGES}" >> $GITHUB_OUTPUT
           echo "Affected packages: ${AFFECTED_PACKAGES}"
 
-      - name: Build and push Docker images
+      - name: Build Docker images
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
           AFFECTED_PACKAGES: ${{ steps.affected.outputs.affected_packages }}
         run: |
-          echo "## Build Summary" > summary.txt
+          echo "## Build Check Summary" > summary.txt
           echo "" >> summary.txt
-          echo "**Commit:** ${{ github.sha }}" >> summary.txt
+          echo "**PR:** #${{ github.event.pull_request.number }}" >> summary.txt
+          echo "**Branch:** ${{ github.head_ref }}" >> summary.txt
           echo "" >> summary.txt
-          echo "### Images Built:" >> summary.txt
+          echo "### Services Built:" >> summary.txt
           echo "" >> summary.txt
 
           # Check if there are any affected packages
@@ -124,17 +99,17 @@ jobs:
             # Skip empty lines
             [ -z "$package" ] && continue
 
-            # Determine paths and repository names
+            # Determine paths and image names
             DOCKERFILE_PATH="${package}/Dockerfile"
-            # Convert package path to ECR repository name
+            # Convert package path to image name
             # e.g., apps/api/account-service -> cca/api/account-service
             # e.g., apps/ui -> cca/ui
-            ECR_REPO="cca/${package#apps/}"
+            IMAGE_NAME="cca/${package#apps/}"
 
             # Check if Dockerfile exists
             if [ ! -f "$DOCKERFILE_PATH" ]; then
               echo "❌ Dockerfile not found at $DOCKERFILE_PATH"
-              echo "- ❌ \`$ECR_REPO\` - Dockerfile missing at \`$DOCKERFILE_PATH\`" >> summary.txt
+              echo "- ❌ \`$IMAGE_NAME\` - Dockerfile missing at \`$DOCKERFILE_PATH\`" >> summary.txt
               BUILD_FAILED=1
               echo ""
               continue
@@ -142,40 +117,27 @@ jobs:
 
             echo "🔨 Building $package..."
             echo "   Dockerfile: $DOCKERFILE_PATH"
-            echo "   ECR Repository: $ECR_REPO"
+            echo "   Image Name: $IMAGE_NAME"
 
-            # Build and push the image using standard docker commands
+            # Build the image without pushing
             set +e
 
-            # Build the image
             docker build \
               --file "$DOCKERFILE_PATH" \
-              --tag "$ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG" \
-              --tag "$ECR_REGISTRY/$ECR_REPO:latest" \
+              --tag "$IMAGE_NAME:pr-${{ github.event.pull_request.number }}" \
+              --tag "$IMAGE_NAME:check" \
               .
             BUILD_EXIT_CODE=$?
-
-            # If build succeeded, push to ECR
-            if [ $BUILD_EXIT_CODE -eq 0 ]; then
-              echo "📤 Pushing image to ECR..."
-              docker push "$ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG"
-              BUILD_EXIT_CODE=$?
-
-              if [ $BUILD_EXIT_CODE -eq 0 ]; then
-                docker push "$ECR_REGISTRY/$ECR_REPO:latest"
-                BUILD_EXIT_CODE=$?
-              fi
-            fi
 
             set -e
 
             if [ $BUILD_EXIT_CODE -eq 0 ]; then
-              echo "✅ Successfully built and pushed $package"
-              echo "   Image: $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG"
-              echo "- ✅ \`$ECR_REPO:$IMAGE_TAG\`" >> summary.txt
+              echo "✅ Successfully built $package"
+              echo "   Image: $IMAGE_NAME:pr-${{ github.event.pull_request.number }}"
+              echo "- ✅ \`$IMAGE_NAME\` - Build successful" >> summary.txt
             else
               echo "❌ Failed to build $package"
-              echo "- ❌ \`$ECR_REPO\` (build failed)" >> summary.txt
+              echo "- ❌ \`$IMAGE_NAME\` - Build failed" >> summary.txt
               BUILD_FAILED=1
             fi
 
