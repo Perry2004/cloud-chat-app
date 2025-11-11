@@ -44,6 +44,9 @@ jobs:
       - name: Determine affected services
         id: affected
         run: |
+          echo "🔍 Determining affected services..."
+          echo ""
+
           # Helper function to map package names to their paths
           map_package_to_path() {
             local pkg_name=$1
@@ -59,8 +62,10 @@ jobs:
           # Compare with the previous commit or main branch
           if [ "${{ github.event_name }}" = "push" ]; then
             BASE_REF="HEAD^1"
+            echo "📍 Trigger: Push to main branch"
           else
             BASE_REF="origin/main"
+            echo "📍 Trigger: Manual workflow dispatch"
           fi
 
           # Run turbo to get affected packages based on changes
@@ -68,15 +73,15 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             # For manual triggers, build all apps packages (useful for manual deployments)
             TURBO_FILTER="./apps/**"
-            echo "Manual trigger: building all packages in apps"
+            echo "🎯 Strategy: Building all services (manual trigger)"
           else
             # For push events, get packages affected by changes since base ref
             # Syntax: {scope}[gitRange] where scope matches packages and gitRange specifies the comparison
             TURBO_FILTER="{./apps/**}[${BASE_REF}]"
-            echo "Automatic trigger: building packages affected since ${BASE_REF}"
+            echo "🎯 Strategy: Building affected services since ${BASE_REF}"
           fi
 
-          echo "Using turbo filter: ${TURBO_FILTER}"
+          echo ""
 
           # Get affected package names from turbo
           # Note: grep returns exit code 1 when no matches found, use || true to prevent script failure
@@ -95,7 +100,18 @@ jobs:
             jq -R -s -c 'split("\n")[:-1]')
 
           echo "affected_packages=${AFFECTED_PACKAGES}" >> $GITHUB_OUTPUT
-          echo "Affected packages: ${AFFECTED_PACKAGES}"
+
+          # Display affected packages
+          PACKAGE_COUNT=$(echo "$AFFECTED_PACKAGES" | jq 'length')
+          if [ "$PACKAGE_COUNT" -eq 0 ]; then
+            echo "ℹ️ No services affected"
+          else
+            echo "📦 Found $PACKAGE_COUNT affected service(s):"
+            echo "$AFFECTED_PACKAGES" | jq -r '.[]' | while read -r pkg; do
+              echo "   • ${pkg#apps/}"
+            done
+          fi
+          echo ""
 
       - name: Build and push Docker images
         env:
@@ -103,21 +119,34 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
           AFFECTED_PACKAGES: ${{ steps.affected.outputs.affected_packages }}
         run: |
-          echo "## Build Summary" > summary.txt
+          echo "## 🚀 Build and Push to ECR Summary" > summary.txt
           echo "" >> summary.txt
-          echo "**Commit:** ${{ github.sha }}" >> summary.txt
-          echo "" >> summary.txt
-          echo "### Images Built:" >> summary.txt
+          echo "**Commit:** \`${{ github.sha }}\`" >> summary.txt
+          echo "**Trigger:** ${{ github.event_name }}" >> summary.txt
+          echo "**Branch:** \`${{ github.ref_name }}\`" >> summary.txt
           echo "" >> summary.txt
 
           # Check if there are any affected packages
           if [ "$AFFECTED_PACKAGES" = "[]" ] || [ -z "$AFFECTED_PACKAGES" ]; then
-            echo "- ℹ️ No services affected by this change" >> summary.txt
+            echo "### ℹ️ No Services to Build" >> summary.txt
+            echo "" >> summary.txt
+            echo "No services were affected by this change. No images built or pushed." >> summary.txt
             cat summary.txt >> $GITHUB_STEP_SUMMARY
+            echo "ℹ️ No services to build - skipping"
             exit 0
           fi
 
+          TOTAL_COUNT=$(echo "$AFFECTED_PACKAGES" | jq 'length')
+          echo "### 📦 Services to Build: $TOTAL_COUNT" >> summary.txt
+          echo "" >> summary.txt
+
           BUILD_FAILED=0
+          SUCCESS_SERVICES=()
+          FAILED_SERVICES=()
+          MISSING_DOCKERFILE=()
+
+          echo "🐳 Building and pushing Docker images to ECR..."
+          echo ""
 
           # Parse affected packages and build Docker images
           while IFS= read -r package; do
@@ -130,24 +159,30 @@ jobs:
             # e.g., apps/api/account-service -> cca/api/account-service
             # e.g., apps/ui -> cca/ui
             ECR_REPO="cca/${package#apps/}"
+            SERVICE_NAME="${package#apps/}"
+
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "📦 Service: $SERVICE_NAME"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
             # Check if Dockerfile exists
             if [ ! -f "$DOCKERFILE_PATH" ]; then
               echo "❌ Dockerfile not found at $DOCKERFILE_PATH"
-              echo "- ❌ \`$ECR_REPO\` - Dockerfile missing at \`$DOCKERFILE_PATH\`" >> summary.txt
+              MISSING_DOCKERFILE+=("$SERVICE_NAME")
               BUILD_FAILED=1
               echo ""
               continue
             fi
 
-            echo "🔨 Building $package..."
-            echo "   Dockerfile: $DOCKERFILE_PATH"
-            echo "   ECR Repository: $ECR_REPO"
+            echo "� Dockerfile: $DOCKERFILE_PATH"
+            echo "🏷️  ECR Repository: $ECR_REPO"
+            echo ""
 
             # Build and push the image using standard docker commands
             set +e
 
             # Build the image
+            echo "🔨 Building Docker image..."
             docker build \
               --file "$DOCKERFILE_PATH" \
               --tag "$ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG" \
@@ -157,36 +192,99 @@ jobs:
 
             # If build succeeded, push to ECR
             if [ $BUILD_EXIT_CODE -eq 0 ]; then
+              echo ""
               echo "📤 Pushing image to ECR..."
+              echo "   → $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG"
               docker push "$ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG"
-              BUILD_EXIT_CODE=$?
+              PUSH_EXIT_CODE=$?
 
-              if [ $BUILD_EXIT_CODE -eq 0 ]; then
+              if [ $PUSH_EXIT_CODE -eq 0 ]; then
+                echo "   → $ECR_REGISTRY/$ECR_REPO:latest"
                 docker push "$ECR_REGISTRY/$ECR_REPO:latest"
-                BUILD_EXIT_CODE=$?
+                PUSH_LATEST_EXIT_CODE=$?
+                BUILD_EXIT_CODE=$PUSH_LATEST_EXIT_CODE
+              else
+                BUILD_EXIT_CODE=$PUSH_EXIT_CODE
               fi
             fi
 
             set -e
 
             if [ $BUILD_EXIT_CODE -eq 0 ]; then
-              echo "✅ Successfully built and pushed $package"
+              echo ""
+              echo "✅ Successfully built and pushed!"
               echo "   Image: $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG"
-              echo "- ✅ \`$ECR_REPO:$IMAGE_TAG\`" >> summary.txt
+              SUCCESS_SERVICES+=("$SERVICE_NAME|$ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG")
             else
-              echo "❌ Failed to build $package"
-              echo "- ❌ \`$ECR_REPO\` (build failed)" >> summary.txt
+              echo ""
+              echo "❌ Build or push failed!"
+              FAILED_SERVICES+=("$SERVICE_NAME")
               BUILD_FAILED=1
             fi
 
             echo ""
           done < <(echo "$AFFECTED_PACKAGES" | jq -r '.[]')
 
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+
+          # Build summary sections
+          if [ ${#SUCCESS_SERVICES[@]} -gt 0 ]; then
+            echo "#### ✅ Successfully Built and Pushed (${#SUCCESS_SERVICES[@]})" >> summary.txt
+            echo "" >> summary.txt
+            for service_info in "${SUCCESS_SERVICES[@]}"; do
+              IFS='|' read -r service_name image_uri <<< "$service_info"
+              echo "- **\`$service_name\`**" >> summary.txt
+              echo "  - Image: \`$image_uri\`" >> summary.txt
+            done
+            echo "" >> summary.txt
+          fi
+
+          if [ ${#MISSING_DOCKERFILE[@]} -gt 0 ]; then
+            echo "#### ❌ Missing Dockerfile (${#MISSING_DOCKERFILE[@]})" >> summary.txt
+            echo "" >> summary.txt
+            for service in "${MISSING_DOCKERFILE[@]}"; do
+              echo "- ❌ \`$service\` - No Dockerfile found" >> summary.txt
+            done
+            echo "" >> summary.txt
+          fi
+
+          if [ ${#FAILED_SERVICES[@]} -gt 0 ]; then
+            echo "#### ❌ Build/Push Failed (${#FAILED_SERVICES[@]})" >> summary.txt
+            echo "" >> summary.txt
+            for service in "${FAILED_SERVICES[@]}"; do
+              echo "- ❌ \`$service\` - Check logs for details" >> summary.txt
+            done
+            echo "" >> summary.txt
+          fi
+
+          # Overall status
+          echo "---" >> summary.txt
+          echo "" >> summary.txt
+
+          if [ $BUILD_FAILED -eq 0 ]; then
+            echo "### ✅ All Services Deployed Successfully" >> summary.txt
+            echo "" >> summary.txt
+            echo "All affected services were built and pushed to ECR successfully." >> summary.txt
+            echo "✅ All services deployed successfully!"
+          else
+            echo "### ❌ Deployment Failed" >> summary.txt
+            echo "" >> summary.txt
+            if [ ${#MISSING_DOCKERFILE[@]} -gt 0 ]; then
+              echo "- ${#MISSING_DOCKERFILE[@]} service(s) missing Dockerfile" >> summary.txt
+            fi
+            if [ ${#FAILED_SERVICES[@]} -gt 0 ]; then
+              echo "- ${#FAILED_SERVICES[@]} service(s) failed to build or push" >> summary.txt
+            fi
+            echo "❌ Some services failed to deploy"
+          fi
+
           # Add summary to GitHub Actions summary
           cat summary.txt >> $GITHUB_STEP_SUMMARY
 
           # Exit with error if any build failed
           if [ $BUILD_FAILED -eq 1 ]; then
-            echo "::error::One or more Docker builds failed"
+            echo ""
+            echo "::error::One or more services failed to build or push to ECR"
             exit 1
           fi
