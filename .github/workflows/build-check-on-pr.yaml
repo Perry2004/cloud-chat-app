@@ -1,0 +1,146 @@
+# Build check for affected services on pull requests
+name: Build Check on PR
+on:
+  pull_request:
+    branches:
+      - main
+jobs:
+  build-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch full history so turbo can compare with base branch
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.20.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Determine affected services
+        id: affected
+        run: |
+          # Helper function to map package names to their paths
+          map_package_to_path() {
+            local pkg_name=$1
+            # Find the actual path for this package name in apps directory
+            local pkg_path=$(find apps -type f -name "package.json" -not -path "*/node_modules/*" \
+              -exec grep -l "\"name\": \"$pkg_name\"" {} \; | head -1 | xargs dirname 2>/dev/null)
+            if [ -n "$pkg_path" ]; then
+              echo "$pkg_path"
+            fi
+          }
+
+          # Get affected packages using turbo
+          # Compare with the base branch (target of PR)
+          BASE_REF="origin/${{ github.base_ref }}"
+
+          # Run turbo to get affected packages based on changes
+          # This considers the dependency graph, so changes to shared packages will affect dependents
+          TURBO_FILTER="{./apps/**}[${BASE_REF}]"
+          echo "Building packages affected since ${BASE_REF}"
+          echo "Using turbo filter: ${TURBO_FILTER}"
+
+          # Get affected package names from turbo
+          # Note: grep returns exit code 1 when no matches found, use || true to prevent script failure
+          AFFECTED_PKG_NAMES=$(pnpm turbo run build --filter="${TURBO_FILTER}" --dry=json 2>/dev/null | \
+            jq -r '.packages[]' | grep -v '^//$' || true)
+
+          # Map package names to their actual paths
+          AFFECTED_PACKAGES=$(echo "$AFFECTED_PKG_NAMES" | \
+            while read -r pkg_name; do
+              [ -z "$pkg_name" ] && continue
+              pkg_path=$(map_package_to_path "$pkg_name")
+              if [ -n "$pkg_path" ]; then
+                echo "$pkg_path"
+              fi
+            done | \
+            jq -R -s -c 'split("\n")[:-1]')
+
+          echo "affected_packages=${AFFECTED_PACKAGES}" >> $GITHUB_OUTPUT
+          echo "Affected packages: ${AFFECTED_PACKAGES}"
+
+      - name: Build Docker images
+        env:
+          AFFECTED_PACKAGES: ${{ steps.affected.outputs.affected_packages }}
+        run: |
+          echo "## Build Check Summary" > summary.txt
+          echo "" >> summary.txt
+          echo "**PR:** #${{ github.event.pull_request.number }}" >> summary.txt
+          echo "**Branch:** ${{ github.head_ref }}" >> summary.txt
+          echo "" >> summary.txt
+          echo "### Services Built:" >> summary.txt
+          echo "" >> summary.txt
+
+          # Check if there are any affected packages
+          if [ "$AFFECTED_PACKAGES" = "[]" ] || [ -z "$AFFECTED_PACKAGES" ]; then
+            echo "ℹ️ No affected packages with Dockerfiles found"
+            echo "- ℹ️ No services affected by this change" >> summary.txt
+            cat summary.txt >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
+          BUILD_FAILED=0
+
+          # Parse affected packages and build Docker images
+          while IFS= read -r package; do
+            # Skip empty lines
+            [ -z "$package" ] && continue
+
+            # Determine paths and image names
+            DOCKERFILE_PATH="${package}/Dockerfile"
+            # Convert package path to image name
+            # e.g., apps/api/account-service -> cca/api/account-service
+            # e.g., apps/ui -> cca/ui
+            IMAGE_NAME="cca/${package#apps/}"
+
+            echo "🔨 Building $package..."
+            echo "   Dockerfile: $DOCKERFILE_PATH"
+            echo "   Image Name: $IMAGE_NAME"
+
+            # Build the image without pushing
+            set +e
+
+            docker build \
+              --file "$DOCKERFILE_PATH" \
+              --tag "$IMAGE_NAME:pr-${{ github.event.pull_request.number }}" \
+              --tag "$IMAGE_NAME:check" \
+              .
+            BUILD_EXIT_CODE=$?
+
+            set -e
+
+            if [ $BUILD_EXIT_CODE -eq 0 ]; then
+              echo "✅ Successfully built $package"
+              echo "   Image: $IMAGE_NAME:pr-${{ github.event.pull_request.number }}"
+              echo "- ✅ \`$IMAGE_NAME\` - Build successful" >> summary.txt
+            else
+              echo "❌ Failed to build $package"
+              echo "- ❌ \`$IMAGE_NAME\` - Build failed" >> summary.txt
+              BUILD_FAILED=1
+            fi
+
+            echo ""
+          done < <(echo "$AFFECTED_PACKAGES" | jq -r '.[]')
+
+          # Add summary to GitHub Actions summary
+          cat summary.txt >> $GITHUB_STEP_SUMMARY
+
+          # Exit with error if any build failed
+          if [ $BUILD_FAILED -eq 1 ]; then
+            echo "::error::One or more Docker builds failed"
+            exit 1
+          fi
