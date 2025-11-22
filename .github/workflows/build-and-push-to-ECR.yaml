@@ -41,6 +41,9 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Determine affected services
         id: affected
         run: |
@@ -183,37 +186,20 @@ jobs:
 
             # Build the image
             echo "🔨 Building Docker image..."
-            docker build \
+            docker buildx build \
+              --platform linux/arm64 \
               --file "$DOCKERFILE_PATH" \
               --tag "$ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG" \
               --tag "$ECR_REGISTRY/$ECR_REPO:latest" \
+              --push \
               .
             BUILD_EXIT_CODE=$?
 
-            # If build succeeded, push to ECR
-            if [ $BUILD_EXIT_CODE -eq 0 ]; then
-              echo ""
-              echo "📤 Pushing image to ECR..."
-              echo "   → $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG"
-              docker push "$ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG"
-              PUSH_EXIT_CODE=$?
-
-              if [ $PUSH_EXIT_CODE -eq 0 ]; then
-                echo "   → $ECR_REGISTRY/$ECR_REPO:latest"
-                docker push "$ECR_REGISTRY/$ECR_REPO:latest"
-                PUSH_LATEST_EXIT_CODE=$?
-                BUILD_EXIT_CODE=$PUSH_LATEST_EXIT_CODE
-              else
-                BUILD_EXIT_CODE=$PUSH_EXIT_CODE
-              fi
-            fi
-
-            set -e
-
+            # Check if build and push succeeded
             if [ $BUILD_EXIT_CODE -eq 0 ]; then
               echo ""
               echo "✅ Successfully built and pushed!"
-              echo "   Image: $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG"
+              echo "   Image: $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG (linux/arm64)"
               SUCCESS_SERVICES+=("$SERVICE_NAME|$ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG")
             else
               echo ""
