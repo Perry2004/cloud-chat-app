@@ -8,7 +8,6 @@ FROM base AS pruner
 WORKDIR /app
 COPY . .
 RUN turbo prune ui --docker
-ENTRYPOINT [ "/bin/bash" ]
 
 FROM base AS installer
 WORKDIR /app

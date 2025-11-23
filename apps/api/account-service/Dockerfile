@@ -1,41 +1,32 @@
-# Build stage
-FROM node:20-alpine AS builder
+FROM node:24 AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+RUN pnpm add -g turbo
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@10.20.0 --activate
-
+FROM base AS pruner
 WORKDIR /app
+COPY . .
+RUN turbo prune account-service --docker
 
-# Copy workspace files
-COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
-COPY turbo.json ./
-
-# Copy the service package.json
-COPY apps/api/account-service/package.json ./apps/api/account-service/
-
-# Install dependencies
+FROM base AS installer
+WORKDIR /app
+COPY --from=pruner /app/out/json/ .
 RUN pnpm install --frozen-lockfile
 
-# Copy source code
-COPY apps/api/account-service ./apps/api/account-service
-
-# Build the application
-RUN pnpm --filter account-service build
-
-# Production stage
-FROM node:22-alpine
-
+FROM base AS builder
 WORKDIR /app
+COPY --from=installer /app/ .
+COPY --from=pruner /app/out/full/ .
+RUN turbo build --filter=account-service
 
-# Copy built application
-COPY --from=builder /app/apps/api/account-service/dist ./dist
-COPY --from=builder /app/apps/api/account-service/package.json ./
-
-# Install only production dependencies
-RUN corepack enable && corepack prepare pnpm@10.20.0 --activate && \
-    pnpm install --prod --frozen-lockfile && \
-    pnpm store prune
-
-EXPOSE 3000
-
-CMD ["node", "dist/main.js"]
+FROM base AS runner
+WORKDIR /app
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+RUN pnpm install --prod --frozen-lockfile
+COPY --from=builder /app/apps/api/account-service/dist ./apps/api/account-service/dist
+EXPOSE 6666
+ENV NODE_ENV=production
+ENV PORT=6666
+CMD ["pnpm", "--filter", "account-service", "start:prod"]
