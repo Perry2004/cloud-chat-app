@@ -1,5 +1,5 @@
-import { Alert } from "@heroui/react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { Button } from "@heroui/react";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -7,11 +7,14 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   return (
-    <>
-      <h1 className="text-3xl font-bold underline">Hello World!</h1>
-      <div className="flex gap-x-4">
-        <Alert>Test alert component</Alert>
-      </div>
-    </>
+    <div className="flex flex-wrap gap-3" data-theme="light">
+      <Button>Primary</Button>
+      <Button variant="secondary">Secondary</Button>
+      <Button variant="tertiary">Tertiary</Button>
+      <Button variant="ghost">Ghost</Button>
+      <Button variant="danger">Danger</Button>
+      <Button variant="danger-soft">Danger Soft</Button>
+      <div className="text-(--new-accent)">Hello</div>
+    </div>
   );
 }
