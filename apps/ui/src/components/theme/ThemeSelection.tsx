@@ -30,15 +30,12 @@ export function ThemeSelection() {
 
   return (
     <Dropdown>
-      <Button aria-label="Menu">
+      <Button aria-label="Theme Selection">
         {themeOptions.find((option) => option.key === theme)?.icon}
       </Button>
       <Dropdown.Popover>
         <Dropdown.Menu
-          onAction={(key) => {
-            console.log(`Selected: ${key}`);
-            setTheme(key as Theme);
-          }}
+          onAction={(key) => setTheme(key as Theme)}
           selectedKeys={new Set([theme])}
           selectionMode="single"
         >

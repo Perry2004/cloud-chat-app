@@ -2,10 +2,7 @@ import { Button } from "@heroui/react";
 
 export function Home() {
   return (
-    <div
-      className="flex h-full flex-wrap items-center justify-center gap-3"
-      data-theme="light"
-    >
+    <div className="flex h-full flex-wrap items-center justify-center gap-3">
       Cloud Chat App
       <Button>Primary</Button>
       <Button variant="secondary">Secondary</Button>
