@@ -10,42 +10,58 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as HealthRouteImport } from './routes/health'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as Root_layoutRouteImport } from './routes/_root_layout'
+import { Route as SplatRouteImport } from './routes/$'
+import { Route as Root_layoutIndexRouteImport } from './routes/_root_layout/index'
 
 const HealthRoute = HealthRouteImport.update({
   id: '/health',
   path: '/health',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
+const Root_layoutRoute = Root_layoutRouteImport.update({
+  id: '/_root_layout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SplatRoute = SplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Root_layoutIndexRoute = Root_layoutIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => Root_layoutRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/health': typeof HealthRoute
+  '/': typeof Root_layoutIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/health': typeof HealthRoute
+  '/': typeof Root_layoutIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/$': typeof SplatRoute
+  '/_root_layout': typeof Root_layoutRouteWithChildren
   '/health': typeof HealthRoute
+  '/_root_layout/': typeof Root_layoutIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/health'
+  fullPaths: '/$' | '/health' | '/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/health'
-  id: '__root__' | '/' | '/health'
+  to: '/$' | '/health' | '/'
+  id: '__root__' | '/$' | '/_root_layout' | '/health' | '/_root_layout/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  SplatRoute: typeof SplatRoute
+  Root_layoutRoute: typeof Root_layoutRouteWithChildren
   HealthRoute: typeof HealthRoute
 }
 
@@ -58,18 +74,45 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HealthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
+    '/_root_layout': {
+      id: '/_root_layout'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof Root_layoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$': {
+      id: '/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof SplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_root_layout/': {
+      id: '/_root_layout/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof Root_layoutIndexRouteImport
+      parentRoute: typeof Root_layoutRoute
     }
   }
 }
 
+interface Root_layoutRouteChildren {
+  Root_layoutIndexRoute: typeof Root_layoutIndexRoute
+}
+
+const Root_layoutRouteChildren: Root_layoutRouteChildren = {
+  Root_layoutIndexRoute: Root_layoutIndexRoute,
+}
+
+const Root_layoutRouteWithChildren = Root_layoutRoute._addFileChildren(
+  Root_layoutRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  SplatRoute: SplatRoute,
+  Root_layoutRoute: Root_layoutRouteWithChildren,
   HealthRoute: HealthRoute,
 }
 export const routeTree = rootRouteImport

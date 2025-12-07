@@ -1,13 +1,12 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { Button } from "@heroui/react";
 
-export const Route = createFileRoute("/")({
-  component: Home,
-});
-
-function Home() {
+export function Home() {
   return (
-    <div className="flex flex-wrap gap-3" data-theme="light">
+    <div
+      className="flex h-full flex-wrap items-center justify-center gap-3"
+      data-theme="light"
+    >
+      Cloud Chat App
       <Button>Primary</Button>
       <Button variant="secondary">Secondary</Button>
       <Button variant="tertiary">Tertiary</Button>

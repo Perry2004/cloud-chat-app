@@ -18,10 +18,13 @@
     "@tailwindcss/vite": "^4.1.17",
     "@tanstack/react-router": "^1.139.14",
     "@tanstack/react-start": "^1.139.14",
+    "immer": "^11.0.1",
+    "lucide-react": "^0.556.0",
     "nitro": "3.0.1-alpha.1",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
-    "tailwindcss": "^4.1.17"
+    "tailwindcss": "^4.1.17",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@types/node": "^22.19.0",
