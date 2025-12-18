@@ -1,0 +1,24 @@
+{
+  "name": "@repo/schema",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.20.0",
+  "devDependencies": {
+    "@repo/ts-config": "workspace:*",
+    "typescript": "^5.9.3"
+  },
+  "exports": {
+    "./schema": "./src/schema.ts"
+  },
+  "dependencies": {
+    "zod": "^4.2.1"
+  }
+}
