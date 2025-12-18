@@ -51,6 +51,9 @@ importers:
       '@nestjs/testing':
         specifier: ^11.0.1
         version: 11.1.8(@nestjs/common@11.1.8(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.8)(@nestjs/platform-express@11.1.8)
+      '@repo/schema':
+        specifier: workspace:*
+        version: link:../../../packages/schema
       '@types/express':
         specifier: ^5.0.0
         version: 5.0.5
@@ -172,6 +175,25 @@ importers:
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.3)(vite@7.2.6(@types/node@22.19.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6))
+
+  packages/schema:
+    dependencies:
+      zod:
+        specifier: ^4.2.1
+        version: 4.2.1
+    devDependencies:
+      '@repo/ts-config':
+        specifier: workspace:*
+        version: link:../ts-config
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  packages/ts-config:
+    devDependencies:
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
 packages:
 
