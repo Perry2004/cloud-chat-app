@@ -5,3 +5,6 @@ services:
       dockerfile: apps/ui/Dockerfile
     ports:
       - "1688:1688"
+    env_file:
+      - .env
+      - .env.dev
