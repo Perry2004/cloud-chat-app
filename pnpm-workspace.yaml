@@ -8,4 +8,5 @@ onlyBuiltDependencies:
   - '@nestjs/core'
   - '@swc/core'
   - esbuild
+  - prisma-zod-generator
   - unrs-resolver

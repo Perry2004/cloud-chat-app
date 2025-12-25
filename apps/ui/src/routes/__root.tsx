@@ -6,6 +6,14 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { validateEnvVars } from "@/utils/validateEnvVars";
+
+validateEnvVars();
+
+const queryClient = new QueryClient();
 
 export const Route = createRootRoute({
   head: () => ({
@@ -24,14 +32,19 @@ export const Route = createRootRoute({
     links: [{ rel: "stylesheet", href: appCss }],
   }),
   component: RootComponent,
+  context: () => ({ queryClient }),
 });
 
 function RootComponent() {
   return (
     <RootDocument>
-      <StrictMode>
-        <Outlet />
-      </StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <StrictMode>
+          <Outlet />
+        </StrictMode>
+        <TanStackRouterDevtools />
+        <ReactQueryDevtools />
+      </QueryClientProvider>
     </RootDocument>
   );
 }
