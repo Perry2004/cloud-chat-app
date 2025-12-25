@@ -1,10 +1,11 @@
 {
     "$schema": "https://turborepo.com/schema.json",
     "globalEnv": [
-        "AUTH0_DOMAIN",
-        "AUTH0_CLIENT_ID",
-        "AUTH0_CLIENT_SECRET",
-        "AUTH0_CALLBACK_URL"
+        "AUTH0_*",
+        "VITE_*",
+        "CORS_*",
+        "STATE_*",
+        "MONGO_*"
     ],
     "tasks": {
         "build": {
@@ -20,6 +21,20 @@
         "dev": {
             "persistent": true,
             "cache": false
+        },
+        "format": {
+            "inputs": [
+                "**/*.{ts,tsx,js,jsx,json,css,md}",
+                "!.turbo/**",
+                "!dist/**",
+                "!.output/**",
+                "!generated/**"
+            ]
+        },
+        "lint": {
+            "dependsOn": [
+                "^build"
+            ]
         }
     }
 }

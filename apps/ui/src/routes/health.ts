@@ -6,7 +6,10 @@ export const Route = createFileRoute("/health")({
   server: {
     handlers: {
       GET: async () => {
-        return json({ message: "CCA-ui-service: ok" });
+        return json({
+          service: "ui",
+          status: "ok",
+        });
       },
     },
   },

@@ -4,13 +4,18 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "format": "turbo format",
+    "lint": "turbo lint",
+    "dev": "turbo dev",
+    "build": "turbo build"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.20.0",
   "devDependencies": {
+    "eslint": "^9.39.1",
+    "prettier": "^3.7.4",
     "turbo": "^2.6.0"
   }
 }
