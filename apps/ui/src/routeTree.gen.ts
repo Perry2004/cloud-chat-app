@@ -8,122 +8,229 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as HealthRouteImport } from './routes/health'
-import { Route as Root_layoutRouteImport } from './routes/_root_layout'
-import { Route as SplatRouteImport } from './routes/$'
-import { Route as Root_layoutIndexRouteImport } from './routes/_root_layout/index'
+import { Route as rootRouteImport } from "./routes/__root";
+import { Route as HealthRouteImport } from "./routes/health";
+import { Route as Guest_layoutRouteImport } from "./routes/_guest_layout";
+import { Route as AuthenticatedRouteImport } from "./routes/_authenticated";
+import { Route as SplatRouteImport } from "./routes/$";
+import { Route as Guest_layoutIndexRouteImport } from "./routes/_guest_layout/index";
+import { Route as AuthenticatedAppRouteImport } from "./routes/_authenticated/app";
+import { Route as AuthenticatedAppApp_layoutRouteImport } from "./routes/_authenticated/app/_app_layout";
+import { Route as AuthenticatedAppApp_layoutIndexRouteImport } from "./routes/_authenticated/app/_app_layout/index";
 
 const HealthRoute = HealthRouteImport.update({
-  id: '/health',
-  path: '/health',
+  id: "/health",
+  path: "/health",
   getParentRoute: () => rootRouteImport,
-} as any)
-const Root_layoutRoute = Root_layoutRouteImport.update({
-  id: '/_root_layout',
+} as any);
+const Guest_layoutRoute = Guest_layoutRouteImport.update({
+  id: "/_guest_layout",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: "/_authenticated",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const SplatRoute = SplatRouteImport.update({
-  id: '/$',
-  path: '/$',
+  id: "/$",
+  path: "/$",
   getParentRoute: () => rootRouteImport,
-} as any)
-const Root_layoutIndexRoute = Root_layoutIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => Root_layoutRoute,
-} as any)
+} as any);
+const Guest_layoutIndexRoute = Guest_layoutIndexRouteImport.update({
+  id: "/",
+  path: "/",
+  getParentRoute: () => Guest_layoutRoute,
+} as any);
+const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
+  id: "/app",
+  path: "/app",
+  getParentRoute: () => AuthenticatedRoute,
+} as any);
+const AuthenticatedAppApp_layoutRoute =
+  AuthenticatedAppApp_layoutRouteImport.update({
+    id: "/_app_layout",
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any);
+const AuthenticatedAppApp_layoutIndexRoute =
+  AuthenticatedAppApp_layoutIndexRouteImport.update({
+    id: "/",
+    path: "/",
+    getParentRoute: () => AuthenticatedAppApp_layoutRoute,
+  } as any);
 
 export interface FileRoutesByFullPath {
-  '/$': typeof SplatRoute
-  '/health': typeof HealthRoute
-  '/': typeof Root_layoutIndexRoute
+  "/$": typeof SplatRoute;
+  "/health": typeof HealthRoute;
+  "/app": typeof AuthenticatedAppApp_layoutRouteWithChildren;
+  "/": typeof Guest_layoutIndexRoute;
+  "/app/": typeof AuthenticatedAppApp_layoutIndexRoute;
 }
 export interface FileRoutesByTo {
-  '/$': typeof SplatRoute
-  '/health': typeof HealthRoute
-  '/': typeof Root_layoutIndexRoute
+  "/$": typeof SplatRoute;
+  "/health": typeof HealthRoute;
+  "/app": typeof AuthenticatedAppApp_layoutIndexRoute;
+  "/": typeof Guest_layoutIndexRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/$': typeof SplatRoute
-  '/_root_layout': typeof Root_layoutRouteWithChildren
-  '/health': typeof HealthRoute
-  '/_root_layout/': typeof Root_layoutIndexRoute
+  __root__: typeof rootRouteImport;
+  "/$": typeof SplatRoute;
+  "/_authenticated": typeof AuthenticatedRouteWithChildren;
+  "/_guest_layout": typeof Guest_layoutRouteWithChildren;
+  "/health": typeof HealthRoute;
+  "/_authenticated/app": typeof AuthenticatedAppRouteWithChildren;
+  "/_guest_layout/": typeof Guest_layoutIndexRoute;
+  "/_authenticated/app/_app_layout": typeof AuthenticatedAppApp_layoutRouteWithChildren;
+  "/_authenticated/app/_app_layout/": typeof AuthenticatedAppApp_layoutIndexRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/$' | '/health' | '/'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/$' | '/health' | '/'
-  id: '__root__' | '/$' | '/_root_layout' | '/health' | '/_root_layout/'
-  fileRoutesById: FileRoutesById
+  fileRoutesByFullPath: FileRoutesByFullPath;
+  fullPaths: "/$" | "/health" | "/app" | "/" | "/app/";
+  fileRoutesByTo: FileRoutesByTo;
+  to: "/$" | "/health" | "/app" | "/";
+  id:
+    | "__root__"
+    | "/$"
+    | "/_authenticated"
+    | "/_guest_layout"
+    | "/health"
+    | "/_authenticated/app"
+    | "/_guest_layout/"
+    | "/_authenticated/app/_app_layout"
+    | "/_authenticated/app/_app_layout/";
+  fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  SplatRoute: typeof SplatRoute
-  Root_layoutRoute: typeof Root_layoutRouteWithChildren
-  HealthRoute: typeof HealthRoute
+  SplatRoute: typeof SplatRoute;
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren;
+  Guest_layoutRoute: typeof Guest_layoutRouteWithChildren;
+  HealthRoute: typeof HealthRoute;
 }
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    '/health': {
-      id: '/health'
-      path: '/health'
-      fullPath: '/health'
-      preLoaderRoute: typeof HealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_root_layout': {
-      id: '/_root_layout'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof Root_layoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/$': {
-      id: '/$'
-      path: '/$'
-      fullPath: '/$'
-      preLoaderRoute: typeof SplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_root_layout/': {
-      id: '/_root_layout/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof Root_layoutIndexRouteImport
-      parentRoute: typeof Root_layoutRoute
-    }
+    "/health": {
+      id: "/health";
+      path: "/health";
+      fullPath: "/health";
+      preLoaderRoute: typeof HealthRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/_guest_layout": {
+      id: "/_guest_layout";
+      path: "";
+      fullPath: "";
+      preLoaderRoute: typeof Guest_layoutRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/_authenticated": {
+      id: "/_authenticated";
+      path: "";
+      fullPath: "";
+      preLoaderRoute: typeof AuthenticatedRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/$": {
+      id: "/$";
+      path: "/$";
+      fullPath: "/$";
+      preLoaderRoute: typeof SplatRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/_guest_layout/": {
+      id: "/_guest_layout/";
+      path: "/";
+      fullPath: "/";
+      preLoaderRoute: typeof Guest_layoutIndexRouteImport;
+      parentRoute: typeof Guest_layoutRoute;
+    };
+    "/_authenticated/app": {
+      id: "/_authenticated/app";
+      path: "/app";
+      fullPath: "/app";
+      preLoaderRoute: typeof AuthenticatedAppRouteImport;
+      parentRoute: typeof AuthenticatedRoute;
+    };
+    "/_authenticated/app/_app_layout": {
+      id: "/_authenticated/app/_app_layout";
+      path: "";
+      fullPath: "/app";
+      preLoaderRoute: typeof AuthenticatedAppApp_layoutRouteImport;
+      parentRoute: typeof AuthenticatedAppRoute;
+    };
+    "/_authenticated/app/_app_layout/": {
+      id: "/_authenticated/app/_app_layout/";
+      path: "/";
+      fullPath: "/app/";
+      preLoaderRoute: typeof AuthenticatedAppApp_layoutIndexRouteImport;
+      parentRoute: typeof AuthenticatedAppApp_layoutRoute;
+    };
   }
 }
 
-interface Root_layoutRouteChildren {
-  Root_layoutIndexRoute: typeof Root_layoutIndexRoute
+interface AuthenticatedAppApp_layoutRouteChildren {
+  AuthenticatedAppApp_layoutIndexRoute: typeof AuthenticatedAppApp_layoutIndexRoute;
 }
 
-const Root_layoutRouteChildren: Root_layoutRouteChildren = {
-  Root_layoutIndexRoute: Root_layoutIndexRoute,
+const AuthenticatedAppApp_layoutRouteChildren: AuthenticatedAppApp_layoutRouteChildren =
+  {
+    AuthenticatedAppApp_layoutIndexRoute: AuthenticatedAppApp_layoutIndexRoute,
+  };
+
+const AuthenticatedAppApp_layoutRouteWithChildren =
+  AuthenticatedAppApp_layoutRoute._addFileChildren(
+    AuthenticatedAppApp_layoutRouteChildren,
+  );
+
+interface AuthenticatedAppRouteChildren {
+  AuthenticatedAppApp_layoutRoute: typeof AuthenticatedAppApp_layoutRouteWithChildren;
 }
 
-const Root_layoutRouteWithChildren = Root_layoutRoute._addFileChildren(
-  Root_layoutRouteChildren,
-)
+const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
+  AuthenticatedAppApp_layoutRoute: AuthenticatedAppApp_layoutRouteWithChildren,
+};
+
+const AuthenticatedAppRouteWithChildren =
+  AuthenticatedAppRoute._addFileChildren(AuthenticatedAppRouteChildren);
+
+interface AuthenticatedRouteChildren {
+  AuthenticatedAppRoute: typeof AuthenticatedAppRouteWithChildren;
+}
+
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAppRoute: AuthenticatedAppRouteWithChildren,
+};
+
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+);
+
+interface Guest_layoutRouteChildren {
+  Guest_layoutIndexRoute: typeof Guest_layoutIndexRoute;
+}
+
+const Guest_layoutRouteChildren: Guest_layoutRouteChildren = {
+  Guest_layoutIndexRoute: Guest_layoutIndexRoute,
+};
+
+const Guest_layoutRouteWithChildren = Guest_layoutRoute._addFileChildren(
+  Guest_layoutRouteChildren,
+);
 
 const rootRouteChildren: RootRouteChildren = {
   SplatRoute: SplatRoute,
-  Root_layoutRoute: Root_layoutRouteWithChildren,
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  Guest_layoutRoute: Guest_layoutRouteWithChildren,
   HealthRoute: HealthRoute,
-}
+};
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();
 
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
+import type { getRouter } from "./router.tsx";
+import type { createStart } from "@tanstack/react-start";
+declare module "@tanstack/react-start" {
   interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
+    ssr: true;
+    router: Awaited<ReturnType<typeof getRouter>>;
   }
 }

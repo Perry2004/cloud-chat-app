@@ -29,6 +29,7 @@
     "@tanstack/react-query-devtools": "^5.91.1",
     "@tanstack/react-router": "^1.141.8",
     "@tanstack/react-router-devtools": "^1.141.8",
+    "@tanstack/react-router-ssr-query": "^1.143.11",
     "@tanstack/react-start": "^1.142.4",
     "axios": "^1.13.2",
     "axios-retry": "^4.5.0",
@@ -45,6 +46,7 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@repo/shared-schema": "workspace:*",
     "@tanstack/eslint-plugin-query": "^5.91.2",
     "@types/node": "^22.19.0",
     "@types/react": "^19.2.7",

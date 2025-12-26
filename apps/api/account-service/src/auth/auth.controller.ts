@@ -102,7 +102,7 @@ export class AuthController {
     res.clearCookie(this.stateCookieName);
 
     return {
-      url: this.configService.get('AUTH0_REDIRECT_URL'),
+      url: this.configService.get('AUTH0_LOGIN_REDIRECT_URL'),
       statusCode: 302,
     };
   }
@@ -123,13 +123,19 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
+    this.logger.debug('Refreshing access token...');
     let refreshToken;
     try {
       refreshToken = z.string().parse(req.cookies[this.refreshTokenCookieName]);
+      this.logger.debug('Refreshed token');
     } catch (e) {
       if (e instanceof z.ZodError) {
         throw new UnauthorizedException();
       } else {
+        this.logger.error(
+          'Unexpected error while parsing refresh token cookie',
+          e,
+        );
         throw e;
       }
     }
