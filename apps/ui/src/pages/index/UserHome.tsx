@@ -1,11 +1,12 @@
 import { ThemeSelection } from "@/components/theme/ThemeSelection";
 import { useProfile } from "@/hooks/stores/useProfile";
+import { validatedEnv } from "@/utils/validateEnvVars";
 import { Button, Link } from "@heroui/react";
 
-export function Home() {
-  const auth0Domain = import.meta.env.VITE_AUTH0_DOMAIN;
-  const auth0ClientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
-  const auth0CallbackUrl = import.meta.env.VITE_AUTH0_CALLBACK_URL;
+export function UserHome() {
+  const auth0Domain = validatedEnv.VITE_AUTH0_DOMAIN;
+  const auth0ClientId = validatedEnv.VITE_AUTH0_CLIENT_ID;
+  const auth0CallbackUrl = validatedEnv.VITE_AUTH0_CALLBACK_URL;
 
   console.log("Auth0 Domain:", auth0Domain);
   console.log("Auth0 Client ID:", auth0ClientId);

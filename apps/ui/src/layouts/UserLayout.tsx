@@ -12,8 +12,9 @@ import {
   SidebarTrigger,
 } from "@/shadcn/components/ui/sidebar";
 import { Separator } from "@heroui/react";
+import { ReactNode } from "react";
 
-export default function Page() {
+export function UserLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -39,16 +40,7 @@ export default function Page() {
             <NavActions />
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-4 px-4 py-10">
-          <div className="bg-muted/50 mx-auto h-24 w-full max-w-3xl rounded-xl">
-            Lorem ipsum dolor sit amet.
-          </div>
-          <div className="bg-muted/50 mx-auto h-full w-full max-w-3xl rounded-xl">
-            Lorem ipsum, dolor sit amet consectetur adipisicing elit. At a
-            eveniet pariatur animi illo unde eos corporis aliquam voluptatibus
-            beatae?
-          </div>
-        </div>
+        <div className="flex flex-1 flex-col gap-4 px-4 py-10">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );

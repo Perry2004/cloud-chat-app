@@ -1,23 +1,29 @@
-import { useTheme } from "@/hooks/stores/useTheme";
+import { useProfile } from "@/hooks/stores/useProfile";
+import { GuestLayout } from "@/layouts/GuestLayout";
+import { UserLayout } from "@/layouts/UserLayout";
 import { Outlet } from "@tanstack/react-router";
+import { useEffect } from "react";
 
-// Root layout component that wraps all pages
 export default function RootLayout() {
-  const resolvedTheme = useTheme((state) => state.resolvedTheme);
-  return (
-    // <div
-    //   className={`${resolvedTheme} flex min-h-screen flex-col items-center justify-center`}
-    // >
-    //   <AppSidebar />
-    //   <main>
-    //     <Outlet />
-    //   </main>
-    //   <footer>Global Footer</footer>
-    // </div>
-    <div
-      className={`${resolvedTheme} flex min-h-screen flex-col items-center justify-center`}
-    >
+  const isLoggedIn = useProfile((state) => state.isLoggedIn);
+  const setIsLoggedIn = useProfile((state) => state.setIsLoggedIn);
+
+  // DEBUG simulate login state
+  useEffect(() => {
+    setIsLoggedIn(false);
+    setTimeout(() => {
+      setIsLoggedIn(true);
+      console.log("Setting isLoggedIn to true");
+    }, 5000);
+  }, [setIsLoggedIn]);
+
+  return isLoggedIn ? (
+    <UserLayout>
       <Outlet />
-    </div>
+    </UserLayout>
+  ) : (
+    <GuestLayout>
+      <Outlet />
+    </GuestLayout>
   );
 }

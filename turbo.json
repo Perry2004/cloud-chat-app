@@ -31,10 +31,6 @@
                 "!generated/**"
             ]
         },
-        "lint": {
-            "dependsOn": [
-                "^build"
-            ]
-        }
+        "lint": {}
     }
 }

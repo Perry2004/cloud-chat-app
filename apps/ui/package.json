@@ -30,6 +30,8 @@
     "@tanstack/react-router": "^1.141.8",
     "@tanstack/react-router-devtools": "^1.141.8",
     "@tanstack/react-start": "^1.142.4",
+    "axios": "^1.13.2",
+    "axios-retry": "^4.5.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "immer": "^11.0.1",
