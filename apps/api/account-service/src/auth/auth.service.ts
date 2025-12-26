@@ -105,12 +105,11 @@ export class AuthService {
   }
 
   async refreshToken(refreshToken: string): Promise<RefreshTokenResponse> {
-    const res = refreshTokenResponseSchema.parse(
-      await this.auth0AuthClient.oauth.refreshTokenGrant({
-        refresh_token: refreshToken,
-      }),
-    );
-    return res;
+    const res = await this.auth0AuthClient.oauth.refreshTokenGrant({
+      refresh_token: refreshToken,
+    });
+    const validatedRes = refreshTokenResponseSchema.parse(res);
+    return validatedRes;
   }
 
   // async getUserThroughEndpoint(accessToken: string): Promise<ProfileDto> {

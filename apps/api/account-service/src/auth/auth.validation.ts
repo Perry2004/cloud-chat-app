@@ -53,7 +53,6 @@ export const refreshTokenResponseSchema = z.object({
     scope: z.string(),
     expires_in: z.number(),
     token_type: z.string(),
-    status: z.number(),
   }),
   status: z.number(),
 });

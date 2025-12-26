@@ -4,6 +4,35 @@ import { createIsomorphicFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { validatedEnv } from "./validateEnvVars";
 
+function mergeCookies(oldCookie: string, setCookieHeaders: string[]) {
+  const cookies = new Map<string, string>();
+
+  if (oldCookie) {
+    oldCookie.split(";").forEach((c) => {
+      const parts = c.trim().split("=");
+      if (parts.length >= 2) {
+        const key = parts[0];
+        const value = parts.slice(1).join("=");
+        cookies.set(key, value);
+      }
+    });
+  }
+
+  setCookieHeaders.forEach((header) => {
+    const [cookiePart] = header.split(";");
+    const parts = cookiePart.trim().split("=");
+    if (parts.length >= 2) {
+      const key = parts[0];
+      const value = parts.slice(1).join("=");
+      cookies.set(key, value);
+    }
+  });
+
+  return Array.from(cookies.entries())
+    .map(([key, val]) => `${key}=${val}`)
+    .join("; ");
+}
+
 function configureInstance(instance: AxiosInstance) {
   let isRefreshing = false;
   let failedQueue: Array<{
@@ -42,12 +71,30 @@ function configureInstance(instance: AxiosInstance) {
         isRefreshing = true;
 
         try {
-          await instance.get(refreshTokenApi);
+          const refreshResponse = await instance.get(refreshTokenApi);
+
+          if (typeof window === "undefined") {
+            const setCookie = refreshResponse.headers["set-cookie"];
+            if (setCookie) {
+              const setCookieArray = Array.isArray(setCookie)
+                ? setCookie
+                : [setCookie];
+              const currentCookie =
+                (instance.defaults.headers.common["cookie"] as string) || "";
+              const newCookie = mergeCookies(currentCookie, setCookieArray);
+              instance.defaults.headers.common["cookie"] = newCookie;
+
+              if (originalRequest.headers) {
+                originalRequest.headers["cookie"] = newCookie;
+              }
+            }
+          }
+
           processQueue(null, null);
           return instance(originalRequest);
-        } catch {
-          processQueue(error, null);
-          return Promise.reject(error);
+        } catch (refreshError) {
+          processQueue(refreshError as Error, null);
+          return Promise.reject(refreshError);
         } finally {
           isRefreshing = false;
         }
