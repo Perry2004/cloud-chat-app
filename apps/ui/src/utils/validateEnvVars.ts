@@ -1,6 +1,7 @@
-import { envSchema } from "./schema";
+import { envSchema, EnvVariables } from "./schema";
 
-export function validateEnvVars() {
-  envSchema.parse(import.meta.env);
-  console.log("Validating env vars...");
+function validateEnvVars(): EnvVariables {
+  return envSchema.parse(import.meta.env);
 }
+
+export const validatedEnv = validateEnvVars();

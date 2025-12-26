@@ -9,9 +9,7 @@ import {
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { validateEnvVars } from "@/utils/validateEnvVars";
-
-validateEnvVars();
+import { useTheme } from "@/hooks/stores/useTheme";
 
 const queryClient = new QueryClient();
 
@@ -50,8 +48,9 @@ function RootComponent() {
 }
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
+  const resolvedTheme = useTheme((state) => state.resolvedTheme);
   return (
-    <html>
+    <html className={resolvedTheme} data-theme={resolvedTheme}>
       <head>
         <HeadContent />
       </head>
