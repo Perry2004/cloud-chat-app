@@ -1,3 +1,8 @@
 import pluginQuery from "@tanstack/eslint-plugin-query";
 
-export default [...pluginQuery.configs["flat/recommended"]];
+export default [
+  {
+    ignores: ["src/routeTree.gen.ts"],
+  },
+  ...pluginQuery.configs["flat/recommended"],
+];
