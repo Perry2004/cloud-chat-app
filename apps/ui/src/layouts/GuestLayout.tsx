@@ -1,8 +1,7 @@
-import { ReactNode } from "react";
 import { ThemeSelection } from "@/components/theme/ThemeSelection";
-import { Outlet } from "@tanstack/react-router";
+import { Link, Outlet } from "@tanstack/react-router";
 import { useProfile } from "@/hooks/queries/useProfile";
-import { Link } from "@heroui/react";
+import { Link as Herolink } from "@heroui/react";
 
 export function GuestLayout() {
   const profile = useProfile();
@@ -20,11 +19,11 @@ export function GuestLayout() {
             <ThemeSelection />
           </div>
           {profile.data?.email ? (
-            <Link href="/app">{profile.data.email}</Link>
+            <Link to="/app">{profile.data.email}</Link>
           ) : (
-            <Link href="http://localhost:8666/api/v1/account/auth/login">
+            <Herolink href="http://localhost:8666/api/v1/account/auth/login">
               Login
-            </Link>
+            </Herolink>
           )}
         </div>
       </header>
