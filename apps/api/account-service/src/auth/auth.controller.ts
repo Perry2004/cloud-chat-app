@@ -15,7 +15,10 @@ import { ConfigService } from '@nestjs/config';
 import { EnvVariables } from '../app.validation';
 import { callbackQuerySchema } from './auth.validation';
 import * as z from 'zod';
-import { type ProfileDto } from '@repo/shared-schema/schema';
+import {
+  VerifyEmailStatusDto,
+  type ProfileDto,
+} from '@repo/shared-schema/schema';
 
 @Controller('auth')
 export class AuthController {
@@ -24,6 +27,15 @@ export class AuthController {
   private readonly accessTokenCookieName = 'access_token';
   private readonly refreshTokenCookieName = 'refresh_token';
   private readonly idTokenCookieName = 'id_token';
+
+  private readonly stateCookieMaxAge = 15 * 60 * 1000; // 15 minutes
+  private readonly refreshTokenMaxAge = 30 * 24 * 3600 * 1000; // 30 days
+
+  private readonly cookieOptions = {
+    httpOnly: true,
+    path: '/',
+    sameSite: 'lax' as const,
+  };
 
   constructor(
     private readonly authService: AuthService,
@@ -39,7 +51,8 @@ export class AuthController {
   ): HttpRedirectResponse {
     const { loginUrl, randomState } = this.authService.buildLoginUrl();
     res.cookie(this.stateCookieName, randomState, {
-      httpOnly: true,
+      ...this.cookieOptions,
+      maxAge: this.stateCookieMaxAge,
     });
     return {
       url: loginUrl,
@@ -54,7 +67,8 @@ export class AuthController {
   ): HttpRedirectResponse {
     const { registerUrl, randomState } = this.authService.buildRegisterUrl();
     res.cookie(this.stateCookieName, randomState, {
-      httpOnly: true,
+      ...this.cookieOptions,
+      maxAge: this.stateCookieMaxAge,
     });
     return {
       url: registerUrl,
@@ -69,9 +83,9 @@ export class AuthController {
   ): HttpRedirectResponse {
     const logoutUrl = this.authService.buildLogoutUrl();
 
-    res.clearCookie(this.accessTokenCookieName);
-    res.clearCookie(this.refreshTokenCookieName);
-    res.clearCookie(this.idTokenCookieName);
+    res.clearCookie(this.accessTokenCookieName, { path: '/' });
+    res.clearCookie(this.refreshTokenCookieName, { path: '/' });
+    res.clearCookie(this.idTokenCookieName, { path: '/' });
 
     return {
       url: logoutUrl,
@@ -79,27 +93,48 @@ export class AuthController {
     };
   }
 
+  @Get('clear-cookies')
+  clearCookies(@Res({ passthrough: true }) res: Response): string {
+    res.clearCookie(this.accessTokenCookieName, { path: '/' });
+    res.clearCookie(this.refreshTokenCookieName, { path: '/' });
+    res.clearCookie(this.idTokenCookieName, { path: '/' });
+    res.clearCookie(this.stateCookieName, { path: '/' });
+    return 'Cookies cleared';
+  }
+
   @Get('callback')
   @Redirect()
   async handleCallback(
     @Query('code') code: string,
     @Query('state') state: string,
+    @Req() req: Request,
     @Res({ passthrough: true })
     res: Response,
   ): Promise<HttpRedirectResponse> {
+    const savedState = z.string().parse(req.cookies[this.stateCookieName]);
+    if (!savedState || savedState !== state) {
+      this.logger.error('State mismatch or missing state cookie');
+      throw new UnauthorizedException('Invalid state');
+    }
+
     ({ code, state } = callbackQuerySchema.parse({ code, state }));
     const exchangedToken = await this.authService.exchangeToken(code);
 
-    res.cookie(this.accessTokenCookieName, exchangedToken.data.access_token, {
-      httpOnly: true,
+    const maxAge = exchangedToken.expires_in * 1000;
+
+    res.cookie(this.accessTokenCookieName, exchangedToken.access_token, {
+      ...this.cookieOptions,
+      maxAge,
     });
-    res.cookie(this.refreshTokenCookieName, exchangedToken.data.refresh_token, {
-      httpOnly: true,
+    res.cookie(this.refreshTokenCookieName, exchangedToken.refresh_token, {
+      ...this.cookieOptions,
+      maxAge: this.refreshTokenMaxAge,
     });
-    res.cookie(this.idTokenCookieName, exchangedToken.data.id_token, {
-      httpOnly: true,
+    res.cookie(this.idTokenCookieName, exchangedToken.id_token, {
+      ...this.cookieOptions,
+      maxAge,
     });
-    res.clearCookie(this.stateCookieName);
+    res.clearCookie(this.stateCookieName, { path: '/' });
 
     return {
       url: this.configService.get('AUTH0_LOGIN_REDIRECT_URL'),
@@ -116,6 +151,16 @@ export class AuthController {
       throw new UnauthorizedException();
     }
     return this.authService.decodeIdToken(idToken);
+    // try {
+    //   const accessToken = z
+    //     .string()
+    //     .parse(req.cookies[this.accessTokenCookieName]);
+    //   return profileDtoSchema.parse(
+    //     await this.authService.getUserThroughEndpoint(accessToken),
+    //   );
+    // } catch {
+    //   throw new UnauthorizedException();
+    // }
   }
 
   @Get('refresh-token')
@@ -142,17 +187,48 @@ export class AuthController {
     const refreshTokenResponse =
       await this.authService.refreshToken(refreshToken);
 
-    res.cookie(
-      this.accessTokenCookieName,
-      refreshTokenResponse.data.access_token,
-      {
-        httpOnly: true,
-      },
-    );
+    const maxAge = refreshTokenResponse.expires_in * 1000;
+
+    res.cookie(this.accessTokenCookieName, refreshTokenResponse.access_token, {
+      ...this.cookieOptions,
+      maxAge,
+    });
+    if (refreshTokenResponse.id_token) {
+      res.cookie(this.idTokenCookieName, refreshTokenResponse.id_token, {
+        ...this.cookieOptions,
+        maxAge,
+      });
+    }
   }
 
   @Get('test-insert-user')
   async testInsertUser() {
     return await this.authService.insertOneUser();
+  }
+
+  @Get('resent-verification-email')
+  async resendVerificationEmail(@Req() req: Request) {
+    const accessToken = z
+      .string()
+      .parse(req.cookies[this.accessTokenCookieName]);
+    const userId = (await this.authService.getUserThroughEndpoint(accessToken))
+      .sub;
+    await this.authService.resendVerificationEmail(userId);
+  }
+
+  @Get('verify-email-status')
+  async getEmailVerificationStatus(
+    @Req() req: Request,
+  ): Promise<VerifyEmailStatusDto> {
+    try {
+      const accessToken = z
+        .string()
+        .parse(req.cookies[this.accessTokenCookieName]);
+      const profile =
+        await this.authService.getUserThroughEndpoint(accessToken);
+      return { email_verified: profile.email_verified };
+    } catch {
+      throw new UnauthorizedException();
+    }
   }
 }

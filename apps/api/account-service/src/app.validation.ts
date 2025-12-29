@@ -6,6 +6,7 @@ export const envSchema = z.object({
   AUTH0_CLIENT_SECRET: z.string(),
   AUTH0_CALLBACK_URL: z.url(),
   AUTH0_AUDIENCE: z.string(),
+  AUTH0_MANAGEMENT_API_IDENTIFIER: z.url(),
   AUTH0_REDIRECT_URL: z.url(),
   AUTH0_LOGIN_REDIRECT_URL: z.url(),
   STATE_COOKIE_NAME: z.string(),
