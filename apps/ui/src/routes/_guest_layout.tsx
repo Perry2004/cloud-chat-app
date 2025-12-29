@@ -6,7 +6,9 @@ export const Route = createFileRoute("/_guest_layout")({
   beforeLoad: async ({ context }) => {
     try {
       await context.queryClient.ensureQueryData(profileQueryOptions);
-    } catch {}
+    } catch {
+      // fine if profile fetch fails
+    }
   },
   component: GuestLayout,
 });

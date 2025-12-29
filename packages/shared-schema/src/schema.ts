@@ -7,5 +7,11 @@ export const profileDtoSchema = z.object({
   updated_at: z.coerce.date(),
   email: z.email(),
   email_verified: z.boolean(),
+  sub: z.string(),
 });
 export type ProfileDto = z.infer<typeof profileDtoSchema>;
+
+export const verifyEmailStatusDtoSchema = z.object({
+  email_verified: z.boolean(),
+});
+export type VerifyEmailStatusDto = z.infer<typeof verifyEmailStatusDtoSchema>;

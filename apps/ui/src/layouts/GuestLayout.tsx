@@ -7,10 +7,10 @@ export function GuestLayout() {
   const profile = useProfile();
   return (
     <div className="bg-background text-foreground flex min-h-screen flex-col">
-      <header className="border-b">
+      <header className="border-separator border-b">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2">
-            <span className="bg-primary size-2 rounded-full" aria-hidden />
+            <span className="bg-accent size-2 rounded-full" aria-hidden />
             <span className="text-lg font-semibold tracking-tight sm:text-xl">
               Cloud Chat
             </span>
@@ -32,7 +32,7 @@ export function GuestLayout() {
         <Outlet />
       </main>
 
-      <footer className="border-t">
+      <footer className="border-separator border-t">
         <div className="text-muted-foreground mx-auto w-full max-w-6xl px-6 py-8 text-center text-sm">
           © {new Date().getFullYear()} Cloud Chat. All rights reserved.
         </div>

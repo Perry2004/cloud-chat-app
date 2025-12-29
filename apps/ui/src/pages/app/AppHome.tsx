@@ -3,7 +3,7 @@ import { useProfile } from "@/hooks/queries/useProfile";
 import { Button, Link } from "@heroui/react";
 
 export function AppHome() {
-  const profile = useProfile();
+  const profileQuery = useProfile();
 
   return (
     <div className="flex h-full flex-wrap items-center justify-center gap-3">
@@ -21,7 +21,7 @@ export function AppHome() {
       <Link href={`http://localhost:8666/api/v1/account/auth/logout`}>
         Logout
       </Link>
-      <pre>{profile.data?.email}</pre>
+      <pre>{profileQuery.data?.email}</pre>
       <ThemeSelection />
     </div>
   );

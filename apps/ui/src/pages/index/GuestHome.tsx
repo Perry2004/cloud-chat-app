@@ -41,7 +41,7 @@ export function GuestHome() {
           <div className="flex flex-col items-center gap-6 py-10 text-center">
             <div className="bg-accent/70 text-accent-foreground inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase">
               Cloud-native chat
-              <span className="bg-primary size-2 rounded-full" aria-hidden />
+              <span className="bg-accent size-2 rounded-full" aria-hidden />
             </div>
             <div className="grid gap-3">
               <h1 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
@@ -68,7 +68,7 @@ export function GuestHome() {
           {features.map((feature) => (
             <Card key={feature.title} className="h-full border shadow-sm">
               <div className="flex items-start gap-3 p-5">
-                <div className="bg-accent/60 text-primary grid size-10 place-items-center rounded-lg">
+                <div className="bg-accent/60 text-accent-foreground grid size-10 place-items-center rounded-lg">
                   {feature.icon}
                 </div>
                 <div>
