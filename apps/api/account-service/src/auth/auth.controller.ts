@@ -143,7 +143,7 @@ export class AuthController {
   }
 
   @Get('profile')
-  getProfile(@Req() req: Request): ProfileDto {
+  async getProfile(@Req() req: Request): Promise<ProfileDto> {
     let idToken;
     try {
       idToken = z.string().parse(req.cookies[this.idTokenCookieName]);
@@ -151,17 +151,9 @@ export class AuthController {
       throw new UnauthorizedException();
     }
 
-    return this.authService.decodeIdToken(idToken);
-    // try {
-    //   const accessToken = z
-    //     .string()
-    //     .parse(req.cookies[this.accessTokenCookieName]);
-    //   return profileDtoSchema.parse(
-    //     await this.authService.getUserThroughEndpoint(accessToken),
-    //   );
-    // } catch {
-    //   throw new UnauthorizedException();
-    // }
+    const userInfo = this.authService.decodeIdToken(idToken);
+    await this.authService.ensureUserInDb(userInfo);
+    return userInfo;
   }
 
   @Get('refresh-token')
@@ -202,11 +194,6 @@ export class AuthController {
     }
   }
 
-  @Get('test-insert-user')
-  async testInsertUser() {
-    return await this.authService.insertOneUser();
-  }
-
   @Get('resent-verification-email')
   async resendVerificationEmail(@Req() req: Request) {
     const accessToken = z
@@ -225,9 +212,10 @@ export class AuthController {
       const accessToken = z
         .string()
         .parse(req.cookies[this.accessTokenCookieName]);
-      const profile =
+      const userInfo =
         await this.authService.getUserThroughEndpoint(accessToken);
-      return { email_verified: profile.email_verified };
+      await this.authService.ensureUserInDb(userInfo);
+      return { email_verified: userInfo.email_verified };
     } catch {
       throw new UnauthorizedException();
     }
