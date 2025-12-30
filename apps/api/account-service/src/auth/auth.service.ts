@@ -1,5 +1,5 @@
 import { EnvVariables } from '../app.validation';
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthenticationClient, ManagementClient, UserInfoClient } from 'auth0';
 import { randomBytes } from 'crypto';
@@ -14,6 +14,7 @@ import {
   userInfoSchema,
 } from './auth.validation';
 import { PrismaService } from '../prisma/prisma.service';
+import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 
 @Injectable()
 export class AuthService {
@@ -33,6 +34,7 @@ export class AuthService {
   constructor(
     private readonly configService: ConfigService<EnvVariables, true>,
     private readonly prismaService: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {
     this.auth0Domain = this.configService.get('AUTH0_DOMAIN');
     this.auth0ClientId = this.configService.get('AUTH0_CLIENT_ID');

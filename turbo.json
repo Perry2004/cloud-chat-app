@@ -5,7 +5,8 @@
         "VITE_*",
         "CORS_*",
         "STATE_*",
-        "MONGO_*"
+        "MONGO_*",
+        "VALKEY_*"
     ],
     "tasks": {
         "db:generate": {
