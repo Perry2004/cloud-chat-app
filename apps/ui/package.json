@@ -43,10 +43,10 @@
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.17",
     "zod": "^4.2.1",
-    "zustand": "^5.0.9"
+    "zustand": "^5.0.9",
+    "@repo/shared-schema": "workspace:*"
   },
   "devDependencies": {
-    "@repo/shared-schema": "workspace:*",
     "@tanstack/eslint-plugin-query": "^5.91.2",
     "@types/node": "^22.19.0",
     "@types/react": "^19.2.7",
