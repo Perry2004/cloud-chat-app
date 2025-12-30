@@ -1,0 +1,11 @@
+{
+  "extends": "@repo/ts-config",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "module": "CommonJS",
+    "moduleResolution": "Node"
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules"]
+}

@@ -10,17 +10,27 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as HealthRouteImport } from './routes/health'
-import { Route as Root_layoutRouteImport } from './routes/_root_layout'
+import { Route as AppRouteImport } from './routes/app'
+import { Route as Guest_layoutRouteImport } from './routes/_guest_layout'
 import { Route as SplatRouteImport } from './routes/$'
-import { Route as Root_layoutIndexRouteImport } from './routes/_root_layout/index'
+import { Route as Guest_layoutIndexRouteImport } from './routes/_guest_layout/index'
+import { Route as AppAuthenticatedRouteImport } from './routes/app/_authenticated'
+import { Route as Guest_layoutVerifyEmailRouteImport } from './routes/_guest_layout/verify-email'
+import { Route as AppAuthenticatedApp_layoutRouteImport } from './routes/app/_authenticated/_app_layout'
+import { Route as AppAuthenticatedApp_layoutIndexRouteImport } from './routes/app/_authenticated/_app_layout/index'
 
 const HealthRoute = HealthRouteImport.update({
   id: '/health',
   path: '/health',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Root_layoutRoute = Root_layoutRouteImport.update({
-  id: '/_root_layout',
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Guest_layoutRoute = Guest_layoutRouteImport.update({
+  id: '/_guest_layout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SplatRoute = SplatRouteImport.update({
@@ -28,40 +38,81 @@ const SplatRoute = SplatRouteImport.update({
   path: '/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Root_layoutIndexRoute = Root_layoutIndexRouteImport.update({
+const Guest_layoutIndexRoute = Guest_layoutIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => Root_layoutRoute,
+  getParentRoute: () => Guest_layoutRoute,
 } as any)
+const AppAuthenticatedRoute = AppAuthenticatedRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => AppRoute,
+} as any)
+const Guest_layoutVerifyEmailRoute = Guest_layoutVerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => Guest_layoutRoute,
+} as any)
+const AppAuthenticatedApp_layoutRoute =
+  AppAuthenticatedApp_layoutRouteImport.update({
+    id: '/_app_layout',
+    getParentRoute: () => AppAuthenticatedRoute,
+  } as any)
+const AppAuthenticatedApp_layoutIndexRoute =
+  AppAuthenticatedApp_layoutIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AppAuthenticatedApp_layoutRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/$': typeof SplatRoute
+  '/app': typeof AppAuthenticatedApp_layoutRouteWithChildren
   '/health': typeof HealthRoute
-  '/': typeof Root_layoutIndexRoute
+  '/verify-email': typeof Guest_layoutVerifyEmailRoute
+  '/': typeof Guest_layoutIndexRoute
+  '/app/': typeof AppAuthenticatedApp_layoutIndexRoute
 }
 export interface FileRoutesByTo {
   '/$': typeof SplatRoute
+  '/app': typeof AppAuthenticatedApp_layoutIndexRoute
   '/health': typeof HealthRoute
-  '/': typeof Root_layoutIndexRoute
+  '/verify-email': typeof Guest_layoutVerifyEmailRoute
+  '/': typeof Guest_layoutIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/$': typeof SplatRoute
-  '/_root_layout': typeof Root_layoutRouteWithChildren
+  '/_guest_layout': typeof Guest_layoutRouteWithChildren
+  '/app': typeof AppRouteWithChildren
   '/health': typeof HealthRoute
-  '/_root_layout/': typeof Root_layoutIndexRoute
+  '/_guest_layout/verify-email': typeof Guest_layoutVerifyEmailRoute
+  '/app/_authenticated': typeof AppAuthenticatedRouteWithChildren
+  '/_guest_layout/': typeof Guest_layoutIndexRoute
+  '/app/_authenticated/_app_layout': typeof AppAuthenticatedApp_layoutRouteWithChildren
+  '/app/_authenticated/_app_layout/': typeof AppAuthenticatedApp_layoutIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/$' | '/health' | '/'
+  fullPaths: '/$' | '/app' | '/health' | '/verify-email' | '/' | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/$' | '/health' | '/'
-  id: '__root__' | '/$' | '/_root_layout' | '/health' | '/_root_layout/'
+  to: '/$' | '/app' | '/health' | '/verify-email' | '/'
+  id:
+    | '__root__'
+    | '/$'
+    | '/_guest_layout'
+    | '/app'
+    | '/health'
+    | '/_guest_layout/verify-email'
+    | '/app/_authenticated'
+    | '/_guest_layout/'
+    | '/app/_authenticated/_app_layout'
+    | '/app/_authenticated/_app_layout/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   SplatRoute: typeof SplatRoute
-  Root_layoutRoute: typeof Root_layoutRouteWithChildren
+  Guest_layoutRoute: typeof Guest_layoutRouteWithChildren
+  AppRoute: typeof AppRouteWithChildren
   HealthRoute: typeof HealthRoute
 }
 
@@ -74,11 +125,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HealthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_root_layout': {
-      id: '/_root_layout'
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_guest_layout': {
+      id: '/_guest_layout'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof Root_layoutRouteImport
+      preLoaderRoute: typeof Guest_layoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$': {
@@ -88,31 +146,97 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_root_layout/': {
-      id: '/_root_layout/'
+    '/_guest_layout/': {
+      id: '/_guest_layout/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof Root_layoutIndexRouteImport
-      parentRoute: typeof Root_layoutRoute
+      preLoaderRoute: typeof Guest_layoutIndexRouteImport
+      parentRoute: typeof Guest_layoutRoute
+    }
+    '/app/_authenticated': {
+      id: '/app/_authenticated'
+      path: ''
+      fullPath: '/app'
+      preLoaderRoute: typeof AppAuthenticatedRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_guest_layout/verify-email': {
+      id: '/_guest_layout/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof Guest_layoutVerifyEmailRouteImport
+      parentRoute: typeof Guest_layoutRoute
+    }
+    '/app/_authenticated/_app_layout': {
+      id: '/app/_authenticated/_app_layout'
+      path: ''
+      fullPath: '/app'
+      preLoaderRoute: typeof AppAuthenticatedApp_layoutRouteImport
+      parentRoute: typeof AppAuthenticatedRoute
+    }
+    '/app/_authenticated/_app_layout/': {
+      id: '/app/_authenticated/_app_layout/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppAuthenticatedApp_layoutIndexRouteImport
+      parentRoute: typeof AppAuthenticatedApp_layoutRoute
     }
   }
 }
 
-interface Root_layoutRouteChildren {
-  Root_layoutIndexRoute: typeof Root_layoutIndexRoute
+interface Guest_layoutRouteChildren {
+  Guest_layoutVerifyEmailRoute: typeof Guest_layoutVerifyEmailRoute
+  Guest_layoutIndexRoute: typeof Guest_layoutIndexRoute
 }
 
-const Root_layoutRouteChildren: Root_layoutRouteChildren = {
-  Root_layoutIndexRoute: Root_layoutIndexRoute,
+const Guest_layoutRouteChildren: Guest_layoutRouteChildren = {
+  Guest_layoutVerifyEmailRoute: Guest_layoutVerifyEmailRoute,
+  Guest_layoutIndexRoute: Guest_layoutIndexRoute,
 }
 
-const Root_layoutRouteWithChildren = Root_layoutRoute._addFileChildren(
-  Root_layoutRouteChildren,
+const Guest_layoutRouteWithChildren = Guest_layoutRoute._addFileChildren(
+  Guest_layoutRouteChildren,
 )
+
+interface AppAuthenticatedApp_layoutRouteChildren {
+  AppAuthenticatedApp_layoutIndexRoute: typeof AppAuthenticatedApp_layoutIndexRoute
+}
+
+const AppAuthenticatedApp_layoutRouteChildren: AppAuthenticatedApp_layoutRouteChildren =
+  {
+    AppAuthenticatedApp_layoutIndexRoute: AppAuthenticatedApp_layoutIndexRoute,
+  }
+
+const AppAuthenticatedApp_layoutRouteWithChildren =
+  AppAuthenticatedApp_layoutRoute._addFileChildren(
+    AppAuthenticatedApp_layoutRouteChildren,
+  )
+
+interface AppAuthenticatedRouteChildren {
+  AppAuthenticatedApp_layoutRoute: typeof AppAuthenticatedApp_layoutRouteWithChildren
+}
+
+const AppAuthenticatedRouteChildren: AppAuthenticatedRouteChildren = {
+  AppAuthenticatedApp_layoutRoute: AppAuthenticatedApp_layoutRouteWithChildren,
+}
+
+const AppAuthenticatedRouteWithChildren =
+  AppAuthenticatedRoute._addFileChildren(AppAuthenticatedRouteChildren)
+
+interface AppRouteChildren {
+  AppAuthenticatedRoute: typeof AppAuthenticatedRouteWithChildren
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAuthenticatedRoute: AppAuthenticatedRouteWithChildren,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   SplatRoute: SplatRoute,
-  Root_layoutRoute: Root_layoutRouteWithChildren,
+  Guest_layoutRoute: Guest_layoutRouteWithChildren,
+  AppRoute: AppRouteWithChildren,
   HealthRoute: HealthRoute,
 }
 export const routeTree = rootRouteImport

@@ -1,0 +1,23 @@
+{
+    "name": "@repo/database",
+    "version": "0.0.0",
+    "private": true,
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "db:generate": "prisma generate",
+        "db:push": "prisma db push",
+        "dev": "tsc --watch"
+    },
+    "dependencies": {
+        "@prisma/client": "^6.1.0",
+        "dotenv": "^17.2.3",
+        "tslib": "^2.8.1"
+    },
+    "devDependencies": {
+        "@repo/ts-config": "workspace:*",
+        "prisma": "^6.1.0",
+        "typescript": "^5.7.2"
+    }
+}

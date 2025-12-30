@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { AppController } from '@/app.controller';
-import { AppService } from '@/app.service';
+import { ConfigModule } from '@nestjs/config';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
+import { envSchema } from './app.validation';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
   imports: [
@@ -9,9 +12,12 @@ import { AppService } from '@/app.service';
       isGlobal: true,
       cache: true,
       ignoreEnvFile: true,
+      validate: (config) => envSchema.parse(config),
     }),
+    AuthModule,
+    PrismaModule,
   ],
   controllers: [AppController],
-  providers: [AppService, ConfigService],
+  providers: [AppService],
 })
 export class AppModule {}

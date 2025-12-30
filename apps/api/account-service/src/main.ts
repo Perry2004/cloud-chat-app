@@ -1,8 +1,9 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from '@/app.module';
+import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { ConsoleLogger, Logger } from '@nestjs/common';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -11,9 +12,19 @@ async function bootstrap() {
       colors: true,
     }),
   });
+
   const configService = app.get(ConfigService);
-  const logger = new Logger('Bootstrap', { timestamp: true });
-  const port = configService.get<number>('PORT') || 6666;
+  app.setGlobalPrefix('api/v1/account');
+  app.enableCors({
+    origin: configService.get<string>('CORS_ORIGIN'),
+    credentials: true,
+  });
+
+  app.use(cookieParser());
+  app.enableShutdownHooks();
+
+  const logger = new Logger('Bootstrap');
+  const port = configService.get<number>('PORT') || 8666;
   logger.log(`Starting Account Service on port ${port}...`);
   await app.listen(port);
 }
