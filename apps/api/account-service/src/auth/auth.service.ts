@@ -157,4 +157,11 @@ export class AuthService {
       `Resend verification email job response: ${JSON.stringify(result)}`,
     );
   }
+
+  /**
+   * Ensure that a user with the given sub exists in the database.
+   * @param sub jwt sub which is the unique identifier for the user
+   * @param email the email of the user
+   */
+  // async ensureUserInDb(sub: string, email: string) {}
 }

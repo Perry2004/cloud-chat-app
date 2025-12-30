@@ -21,6 +21,7 @@ async function bootstrap() {
   });
 
   app.use(cookieParser());
+  app.enableShutdownHooks();
 
   const logger = new Logger('Bootstrap');
   const port = configService.get<number>('PORT') || 8666;

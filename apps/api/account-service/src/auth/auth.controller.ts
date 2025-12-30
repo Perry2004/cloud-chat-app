@@ -150,6 +150,7 @@ export class AuthController {
     } catch {
       throw new UnauthorizedException();
     }
+
     return this.authService.decodeIdToken(idToken);
     // try {
     //   const accessToken = z

@@ -8,9 +8,19 @@
         "MONGO_*"
     ],
     "tasks": {
+        "db:generate": {
+            "cache": true,
+            "inputs": [
+                "prisma/schema.prisma"
+            ],
+            "outputs": [
+                "src/generated/**"
+            ]
+        },
         "build": {
             "dependsOn": [
-                "^build"
+                "^db:generate",
+                "db:generate"
             ],
             "outputs": [
                 "dist/**",
@@ -19,6 +29,9 @@
             ]
         },
         "dev": {
+            "dependsOn": [
+                "^db:generate"
+            ],
             "persistent": true,
             "cache": false
         },
