@@ -40,6 +40,13 @@
             "dependsOn": [
                 "^db:generate"
             ],
+            "with": [
+                "//#infra:up"
+            ],
+            "persistent": true,
+            "cache": false
+        },
+        "//#infra:up": {
             "persistent": true,
             "cache": false
         },
