@@ -133,14 +133,6 @@ export class AuthService {
     return userInfoSchema.parse(response);
   }
 
-  async insertOneUser() {
-    return await this.prismaService.user.create({
-      data: {
-        email: 'test@example.email',
-      },
-    });
-  }
-
   async getUserInfoBySub(sub: string): Promise<ManagementUserInfo> {
     const user = await this.auth0ManagementClient.users.get(sub);
     this.logger.debug(`Management API user response: ${JSON.stringify(user)}`);
@@ -158,10 +150,22 @@ export class AuthService {
     );
   }
 
-  /**
-   * Ensure that a user with the given sub exists in the database.
-   * @param sub jwt sub which is the unique identifier for the user
-   * @param email the email of the user
-   */
-  // async ensureUserInDb(sub: string, email: string) {}
+  async ensureUserInDb(userInfo: UserInfo) {
+    await this.prismaService.user.upsert({
+      where: { id: userInfo.sub },
+      update: {
+        email: userInfo.email,
+        emailVerified: userInfo.email_verified,
+        name: userInfo.name,
+        picture: userInfo.picture,
+      },
+      create: {
+        id: userInfo.sub,
+        email: userInfo.email,
+        emailVerified: userInfo.email_verified,
+        name: userInfo.name,
+        picture: userInfo.picture,
+      },
+    });
+  }
 }

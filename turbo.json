@@ -17,6 +17,14 @@
                 "src/generated/**"
             ]
         },
+        "db:push": {
+            "inputs": [
+                "prisma/schema.prisma"
+            ],
+            "outputs": [
+                "src/generated/**"
+            ]
+        },
         "build": {
             "dependsOn": [
                 "^db:generate",
