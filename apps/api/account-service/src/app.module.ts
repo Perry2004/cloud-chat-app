@@ -20,7 +20,9 @@ import KeyvRedis from '@keyv/redis';
       useFactory: (configService: ConfigService<EnvVariables, true>) => {
         return {
           stores: [
-            new KeyvRedis(configService.get('VALKEY_CONNECTION_STRING')),
+            new KeyvRedis(configService.get('VALKEY_CONNECTION_STRING'), {
+              namespace: 'account-service',
+            }),
           ],
         };
       },

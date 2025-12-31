@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Inject,
   type HttpRedirectResponse,
   Logger,
   Query,
@@ -19,6 +20,7 @@ import {
   VerifyEmailStatusDto,
   type ProfileDto,
 } from '@repo/shared-schema/schema';
+import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 
 @Controller('auth')
 export class AuthController {
@@ -40,6 +42,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService<EnvVariables, true>,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {
     this.stateCookieName = this.configService.get('STATE_COOKIE_NAME');
   }
@@ -78,10 +81,16 @@ export class AuthController {
 
   @Get('logout')
   @Redirect()
-  redirectToLogout(
+  async redirectToLogout(
     @Res({ passthrough: true }) res: Response,
-  ): HttpRedirectResponse {
+    @Req() req: Request,
+  ): Promise<HttpRedirectResponse> {
     const logoutUrl = this.authService.buildLogoutUrl();
+
+    await this.authService.invalidateCacheForUser({
+      accessToken: z.string().parse(req.cookies[this.accessTokenCookieName]),
+      idToken: z.string().parse(req.cookies[this.idTokenCookieName]),
+    });
 
     res.clearCookie(this.accessTokenCookieName, { path: '/' });
     res.clearCookie(this.refreshTokenCookieName, { path: '/' });
@@ -94,7 +103,18 @@ export class AuthController {
   }
 
   @Get('clear-cookies')
-  clearCookies(@Res({ passthrough: true }) res: Response): string {
+  async clearCookies(
+    @Res({ passthrough: true }) res: Response,
+    @Req() req: Request,
+  ): Promise<string> {
+    await this.authService.invalidateCacheForUser({
+      accessToken: z
+        .string()
+        .optional()
+        .parse(req.cookies[this.accessTokenCookieName]),
+      idToken: z.string().optional().parse(req.cookies[this.idTokenCookieName]),
+    });
+
     res.clearCookie(this.accessTokenCookieName, { path: '/' });
     res.clearCookie(this.refreshTokenCookieName, { path: '/' });
     res.clearCookie(this.idTokenCookieName, { path: '/' });
@@ -122,6 +142,10 @@ export class AuthController {
 
     const maxAge = exchangedToken.expires_in * 1000;
 
+    this.logger.debug(
+      `Setting auth cookies: ${JSON.stringify(exchangedToken)}`,
+    );
+
     res.cookie(this.accessTokenCookieName, exchangedToken.access_token, {
       ...this.cookieOptions,
       maxAge,
@@ -148,10 +172,11 @@ export class AuthController {
     try {
       idToken = z.string().parse(req.cookies[this.idTokenCookieName]);
     } catch {
+      this.logger.error('Missing or invalid ID token cookie');
       throw new UnauthorizedException();
     }
 
-    const userInfo = this.authService.decodeIdToken(idToken);
+    const userInfo = await this.authService.decodeIdToken(idToken);
     await this.authService.ensureUserInDb(userInfo);
     return userInfo;
   }

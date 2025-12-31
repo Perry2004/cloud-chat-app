@@ -113,10 +113,22 @@ export class AuthService {
     return exchangedTokenResponseSchema.parse(res.data);
   }
 
-  decodeIdToken(idToken: string): UserInfo {
+  async decodeIdToken(idToken: string): Promise<UserInfo> {
+    const cacheKey = `decoded_id_token:${idToken}`;
+    const cachedToken = await this.cacheManager.get<UserInfo>(cacheKey);
+    if (cachedToken) {
+      this.logger.debug(`Returning cached decoded ID token`);
+      return cachedToken;
+    }
+
     const decodedToken = decodeJwt(idToken);
     this.logger.debug(`Decoded ID token: ${JSON.stringify(decodedToken)}`);
-    return userInfoSchema.parse(decodedToken);
+    const userInfo = userInfoSchema.parse(decodedToken);
+
+    // Cache for 1 hour
+    await this.cacheManager.set(cacheKey, userInfo, 60 * 60 * 1000);
+
+    return userInfo;
   }
 
   async refreshToken(refreshToken: string): Promise<RefreshTokenResponse> {
@@ -129,16 +141,45 @@ export class AuthService {
   }
 
   async getUserThroughEndpoint(accessToken: string): Promise<UserInfo> {
+    const cacheKey = `user_info:${accessToken}`;
+    const cachedUser = await this.cacheManager.get<UserInfo>(cacheKey);
+    if (cachedUser) {
+      this.logger.debug(`Returning cached user info for access token`);
+      return cachedUser;
+    }
+
     const response = (await this.auth0UserInfoClient.getUserInfo(accessToken))
       .data;
     this.logger.debug(`User info response: ${JSON.stringify(response)}`);
-    return userInfoSchema.parse(response);
+    const userInfo = userInfoSchema.parse(response);
+
+    // only cache if email is verified
+    // Cache for 15 minutes
+    if (userInfo.email_verified) {
+      await this.cacheManager.set(cacheKey, userInfo, 15 * 60 * 1000);
+    }
+
+    return userInfo;
   }
 
   async getUserInfoBySub(sub: string): Promise<ManagementUserInfo> {
+    const cacheKey = `management_user_info:${sub}`;
+    const cachedUser =
+      await this.cacheManager.get<ManagementUserInfo>(cacheKey);
+    if (cachedUser) {
+      this.logger.debug(
+        `Returning cached management user info for sub: ${sub}`,
+      );
+      return cachedUser;
+    }
+
     const user = await this.auth0ManagementClient.users.get(sub);
     this.logger.debug(`Management API user response: ${JSON.stringify(user)}`);
     const userInfo = managementUserInfoSchema.parse(user);
+
+    // Cache for 1 hour
+    await this.cacheManager.set(cacheKey, userInfo, 60 * 60 * 1000);
+
     return userInfo;
   }
 
@@ -169,5 +210,36 @@ export class AuthService {
         picture: userInfo.picture,
       },
     });
+  }
+
+  async invalidateCacheForUser({
+    accessToken,
+    idToken,
+  }: {
+    accessToken?: string;
+    idToken?: string;
+  }) {
+    if (accessToken) {
+      const accessTokenCacheKey = `user_info:${accessToken}`;
+      await this.cacheManager.del(accessTokenCacheKey);
+      this.logger.debug(
+        `Invalidated cache for access token with key: ${accessTokenCacheKey}`,
+      );
+    }
+
+    if (idToken) {
+      const idTokenCacheKey = `decoded_id_token:${idToken}`;
+      await this.cacheManager.del(idTokenCacheKey);
+      this.logger.debug(
+        `Invalidated cache for ID token with key: ${idTokenCacheKey}`,
+      );
+
+      const userSub = (await this.decodeIdToken(idToken)).sub;
+      const managementUserCacheKey = `management_user_info:${userSub}`;
+      await this.cacheManager.del(managementUserCacheKey);
+      this.logger.debug(
+        `Invalidated cache for management user info with key: ${managementUserCacheKey}`,
+      );
+    }
   }
 }
