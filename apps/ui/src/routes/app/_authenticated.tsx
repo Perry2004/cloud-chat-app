@@ -21,6 +21,7 @@ export const Route = createFileRoute("/app/_authenticated")({
         throw redirect({ to: "/verify-email" });
       }
     } catch (error) {
+      console.error(error);
       if (isRedirect(error)) {
         console.log("Re-throwing redirection");
         throw error;

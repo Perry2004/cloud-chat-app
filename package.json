@@ -7,7 +7,9 @@
     "format": "turbo format",
     "lint": "turbo lint",
     "dev": "turbo dev",
-    "build": "turbo build"
+    "build": "turbo build",
+    "infra:up": "docker compose -f compose.dev.yaml up",
+    "infra:down": "docker compose -f compose.dev.yaml down"
   },
   "keywords": [],
   "author": "",

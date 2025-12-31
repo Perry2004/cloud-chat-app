@@ -11,5 +11,6 @@ export const envSchema = z.object({
   AUTH0_LOGIN_REDIRECT_URL: z.url(),
   STATE_COOKIE_NAME: z.string(),
   CORS_ORIGIN: z.url(),
+  VALKEY_CONNECTION_STRING: z.string(),
 });
 export type EnvVariables = z.infer<typeof envSchema>;
