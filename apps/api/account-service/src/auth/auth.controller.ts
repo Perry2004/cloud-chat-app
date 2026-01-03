@@ -125,20 +125,38 @@ export class AuthController {
   @Get('callback')
   @Redirect()
   async handleCallback(
-    @Query('code') code: string,
-    @Query('state') state: string,
+    @Query() query: any,
     @Req() req: Request,
     @Res({ passthrough: true })
     res: Response,
   ): Promise<HttpRedirectResponse> {
+    const parsedParams = callbackQuerySchema.parse(query);
+
     const savedState = z.string().parse(req.cookies[this.stateCookieName]);
-    if (!savedState || savedState !== state) {
+    if (!savedState || parsedParams.state !== savedState) {
       this.logger.error('State mismatch or missing state cookie');
       throw new UnauthorizedException('Invalid state');
     }
 
-    ({ code, state } = callbackQuerySchema.parse({ code, state }));
-    const exchangedToken = await this.authService.exchangeToken(code);
+    if ('error' in parsedParams) {
+      this.logger.error(
+        `Error in callback: ${parsedParams.error} - ${parsedParams.error_description}`,
+      );
+
+      res.clearCookie(this.accessTokenCookieName, { path: '/' });
+      res.clearCookie(this.refreshTokenCookieName, { path: '/' });
+      res.clearCookie(this.idTokenCookieName, { path: '/' });
+      res.clearCookie(this.stateCookieName, { path: '/' });
+
+      return {
+        url: this.configService.get('AUTH0_LOGIN_REDIRECT_URL'),
+        statusCode: 302,
+      };
+    }
+
+    const exchangedToken = await this.authService.exchangeToken(
+      parsedParams.code,
+    );
 
     const maxAge = exchangedToken.expires_in * 1000;
 
