@@ -1,9 +1,16 @@
 import * as z from 'zod';
 
-export const callbackQuerySchema = z.object({
-  code: z.string(),
-  state: z.string(),
-});
+export const callbackQuerySchema = z.union([
+  z.object({
+    code: z.string(),
+    state: z.string(),
+  }),
+  z.object({
+    error: z.string(),
+    error_description: z.string(),
+    state: z.string(),
+  }),
+]);
 export type CallbackQueryParams = z.infer<typeof callbackQuerySchema>;
 
 export const exchangedTokenResponseSchema = z.object({
