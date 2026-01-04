@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { AccountAppModule } from './account-app.module';
+import { MessageAppModule } from './message-app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { ConsoleLogger, Logger } from '@nestjs/common';
@@ -7,7 +7,7 @@ import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(
-    AccountAppModule,
+    MessageAppModule,
     {
       logger: new ConsoleLogger({
         json: true,
@@ -17,7 +17,7 @@ async function bootstrap() {
   );
 
   const configService = app.get(ConfigService);
-  app.setGlobalPrefix('api/v1/account');
+  app.setGlobalPrefix('api/v1/message');
   app.enableCors({
     origin: configService.get<string>('CORS_ORIGIN'),
     credentials: true,
@@ -27,8 +27,8 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   const logger = new Logger('Bootstrap');
-  const port = configService.get<number>('PORT') || 8666;
-  logger.log(`Starting Account Service on port ${port}...`);
+  const port = configService.get<number>('PORT') || 8888;
+  logger.log(`Starting Message Service on port ${port}...`);
   await app.listen(port);
 }
 

@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { AuthModule } from './auth/auth.module';
-import { envSchema, EnvVariables } from './app.validation';
+import { MessageAppController } from './message-app.controller';
+import { MessageAppService } from './message-app.service';
+import { envSchema, EnvVariables } from './message-app.validation';
 import { PrismaModule } from './prisma/prisma.module';
 import { CacheModule } from '@nestjs/cache-manager';
+import { MessageModule } from './message/message.module';
 import KeyvRedis from '@keyv/redis';
 
 @Module({
@@ -21,7 +21,7 @@ import KeyvRedis from '@keyv/redis';
         return {
           stores: [
             new KeyvRedis(configService.get('VALKEY_CONNECTION_STRING'), {
-              namespace: 'account-service',
+              namespace: 'message-service',
             }),
           ],
         };
@@ -29,10 +29,10 @@ import KeyvRedis from '@keyv/redis';
       inject: [ConfigService],
       isGlobal: true,
     }),
-    AuthModule,
     PrismaModule,
+    MessageModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [MessageAppController],
+  providers: [MessageAppService],
 })
-export class AppModule {}
+export class MessageAppModule {}

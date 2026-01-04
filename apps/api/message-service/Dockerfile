@@ -7,7 +7,7 @@ RUN pnpm add -g turbo
 FROM base AS pruner
 WORKDIR /app
 COPY . .
-RUN turbo prune account-service --docker
+RUN turbo prune message-service --docker
 
 FROM base AS installer
 WORKDIR /app
@@ -18,15 +18,15 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=installer /app/ .
 COPY --from=pruner /app/out/full/ .
-RUN turbo build --filter=account-service
+RUN turbo build --filter=message-service
 
 FROM base AS runner
 WORKDIR /app
 COPY --from=pruner /app/out/json/ .
 COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 RUN pnpm install --prod --frozen-lockfile
-COPY --from=builder /app/apps/api/account-service/dist ./apps/api/account-service/dist
-EXPOSE 8666
+COPY --from=builder /app/apps/api/message-service/dist ./apps/api/message-service/dist
+EXPOSE 8888
 ENV NODE_ENV=production
-ENV PORT=8666
-CMD ["pnpm", "--filter", "account-service", "start:prod"]
+ENV PORT=8888
+CMD ["pnpm", "--filter", "message-service", "start:prod"]
