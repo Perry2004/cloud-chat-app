@@ -1,0 +1,7 @@
+services:
+  cca-account-service:
+    build:
+      context: ../../../
+      dockerfile: apps/api/message-service/Dockerfile
+    ports:
+      - '8888:8888'

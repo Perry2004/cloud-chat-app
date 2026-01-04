@@ -1,4 +1,4 @@
-import { EnvVariables } from '../app.validation';
+import { EnvVariables } from '../account-app.validation';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthenticationClient, ManagementClient, UserInfoClient } from 'auth0';

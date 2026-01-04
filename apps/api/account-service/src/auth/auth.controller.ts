@@ -13,7 +13,7 @@ import {
 import { AuthService } from './auth.service';
 import type { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
-import { EnvVariables } from '../app.validation';
+import { EnvVariables } from '../account-app.validation';
 import { callbackQuerySchema } from './auth.validation';
 import * as z from 'zod';
 import {
