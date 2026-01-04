@@ -7,6 +7,7 @@ import {
   redirect,
   isRedirect,
 } from "@tanstack/react-router";
+import { isAxiosError } from "axios";
 
 export const Route = createFileRoute("/app/_authenticated")({
   beforeLoad: async ({ context }) => {
@@ -25,9 +26,11 @@ export const Route = createFileRoute("/app/_authenticated")({
       if (isRedirect(error)) {
         console.log("Re-throwing redirection");
         throw error;
-      } else {
+      } else if (isAxiosError(error) && error.response?.status === 401) {
         console.log("Throwing unauthenticated error from _authenticated");
         throw new UnauthenticatedError();
+      } else {
+        throw error;
       }
     }
   },

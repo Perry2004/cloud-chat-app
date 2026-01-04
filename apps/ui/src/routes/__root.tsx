@@ -10,9 +10,6 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { QueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/hooks/stores/useTheme";
-import { Unauthenticated } from "@/pages/Unauthenticated";
-import { UnauthenticatedError } from "@/utils/errors";
-import { InternalError } from "@/pages/InternalError";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   {
@@ -32,24 +29,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       links: [{ rel: "stylesheet", href: appCss }],
     }),
     component: RootComponent,
-    errorComponent: (props) => {
-      return (
-        <RootDocument>
-          <DefaultErrorComponent {...props} />
-        </RootDocument>
-      );
-    },
   },
 );
-
-function DefaultErrorComponent({ error }: { error: any }) {
-  switch (error?.message) {
-    case UnauthenticatedError.message:
-      return <Unauthenticated />;
-    default:
-      return <InternalError />;
-  }
-}
 
 function RootComponent() {
   return (
