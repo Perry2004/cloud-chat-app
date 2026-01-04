@@ -87,10 +87,14 @@ export class AuthController {
   ): Promise<HttpRedirectResponse> {
     const logoutUrl = this.authService.buildLogoutUrl();
 
-    await this.authService.invalidateCacheForUser({
-      accessToken: z.string().parse(req.cookies[this.accessTokenCookieName]),
-      idToken: z.string().parse(req.cookies[this.idTokenCookieName]),
-    });
+    try {
+      await this.authService.invalidateCacheForUser({
+        accessToken: z.string().parse(req.cookies[this.accessTokenCookieName]),
+        idToken: z.string().parse(req.cookies[this.idTokenCookieName]),
+      });
+    } catch {
+      // ignore
+    }
 
     res.clearCookie(this.accessTokenCookieName, { path: '/' });
     res.clearCookie(this.refreshTokenCookieName, { path: '/' });
@@ -220,20 +224,30 @@ export class AuthController {
         throw e;
       }
     }
-    const refreshTokenResponse =
-      await this.authService.refreshToken(refreshToken);
 
-    const maxAge = refreshTokenResponse.expires_in * 1000;
+    try {
+      const refreshTokenResponse =
+        await this.authService.refreshToken(refreshToken);
 
-    res.cookie(this.accessTokenCookieName, refreshTokenResponse.access_token, {
-      ...this.cookieOptions,
-      maxAge,
-    });
-    if (refreshTokenResponse.id_token) {
-      res.cookie(this.idTokenCookieName, refreshTokenResponse.id_token, {
-        ...this.cookieOptions,
-        maxAge,
-      });
+      const maxAge = refreshTokenResponse.expires_in * 1000;
+
+      res.cookie(
+        this.accessTokenCookieName,
+        refreshTokenResponse.access_token,
+        {
+          ...this.cookieOptions,
+          maxAge,
+        },
+      );
+      if (refreshTokenResponse.id_token) {
+        res.cookie(this.idTokenCookieName, refreshTokenResponse.id_token, {
+          ...this.cookieOptions,
+          maxAge,
+        });
+      }
+    } catch (error) {
+      this.logger.error('Error refreshing token', error);
+      throw new UnauthorizedException();
     }
   }
 
