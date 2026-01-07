@@ -24,12 +24,10 @@ export function AppHome() {
     };
 
     socket.on("message", handleMessage);
-    socket.on("response", handleMessage);
     socket.onAny(handleAny);
 
     return () => {
       socket.off("message", handleMessage);
-      socket.off("response", handleMessage);
       socket.offAny(handleAny);
     };
   }, [socket]);
@@ -37,7 +35,15 @@ export function AppHome() {
   const handleSendMessage = () => {
     if (socket && message.trim()) {
       console.log("Sending socket message:", message);
-      socket.emit("message", message);
+
+      // Pass a callback function as the last argument to handle the acknowledgment
+      socket.emit("message", message, (response: any) => {
+        console.log("Server acknowledgment:", response);
+        const ackMsg =
+          typeof response === "string" ? response : JSON.stringify(response);
+        setReceivedMessages((prev) => [...prev, `[ACK] ${ackMsg}`]);
+      });
+
       setMessage("");
     }
   };
