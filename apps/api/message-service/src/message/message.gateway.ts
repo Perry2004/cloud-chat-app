@@ -20,6 +20,6 @@ export class MessageGateway {
   ) {
     this.logger.debug(`Received message: ${data}`);
     client.emit('message', `echo: ${data}`);
-    return `echo: ${data}`;
+    return `acknowledge: ${data}`;
   }
 }
