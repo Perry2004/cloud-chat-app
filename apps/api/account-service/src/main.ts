@@ -4,6 +4,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { ConsoleLogger, Logger } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(
@@ -17,7 +18,8 @@ async function bootstrap() {
   );
 
   const configService = app.get(ConfigService);
-  app.setGlobalPrefix('api/v1/account');
+  const globalPrefix = 'api/v1/account';
+  app.setGlobalPrefix(globalPrefix);
   app.enableCors({
     origin: configService.get<string>('CORS_ORIGIN'),
     credentials: true,
@@ -25,6 +27,18 @@ async function bootstrap() {
 
   app.use(cookieParser());
   app.enableShutdownHooks();
+
+  const documentFactory = () =>
+    SwaggerModule.createDocument(
+      app,
+      new DocumentBuilder()
+        .setTitle('Account Service API')
+        .setDescription('The Account Service API description')
+        .setVersion('1.0')
+        .addTag('account')
+        .build(),
+    );
+  SwaggerModule.setup(globalPrefix, app, documentFactory);
 
   const logger = new Logger('Bootstrap');
   const port = configService.get<number>('PORT') || 8666;
