@@ -1,0 +1,7 @@
+services:
+  cca-conversation-service:
+    build:
+      context: ../../../
+      dockerfile: apps/api/conversation-service/Dockerfile
+    ports:
+      - '8688:8688'
