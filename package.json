@@ -18,6 +18,6 @@
   "devDependencies": {
     "eslint": "^9.39.1",
     "prettier": "^3.7.4",
-    "turbo": "^2.6.0"
+    "turbo": "^2.11.10"
   }
 }
